@@ -7,6 +7,8 @@
  * Настройки передаются при создании экзепляра класса в виде массива.
  * Если формат ответа сервера = FMT_JSON, то ответ сервера принудительно конвертируется в utf-8.
  *
+ * Функциональность параметра <b>list<b> пока не реализована.
+ * 
  * Примеры использования:
  * <pre>
  *	$sms = new SMSCenter(array(
@@ -120,30 +122,6 @@ class SMSCenter implements ArrayAccess {
 	public function send($phones, $message, $sender, $options = array()) {
 		$options['phones'] = $phones;
 		if ($message !== NULL ) $options['mes'] = $message;
-		if ($sender !== NULL ) $options['sender'] = $sender;
-
-		return $this->sendCmd('send', $options);
-	}
-
-	/**
-	 * Отправить несколько сообщений.
-	 *
-	 * @access public
-	 * @param array $list Номера телефонов и сообщения в виде
-	 * <pre>
-	 *		['+79991111111' => 'Привет', '79992222222,79993333333' => 'Пока']
-	 * </pre>
-	 * @param array $options Дополнительные параметры
-	 * @return bool|string|stdClass Результат выполнения запроса в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
-	 */
-	public function sendFromArray($list, $sender, $options = array()) {
-		$data = NULL;
-
-		if (is_array($list) && !empty($list)) {
-			foreach ($list as $phone => $message)
-				$data[]= $this->clearPhone($phone).':'.$message;
-		}
-		Say::dump($data);
 		if ($sender !== NULL ) $options['sender'] = $sender;
 
 		return $this->sendCmd('send', $options);
