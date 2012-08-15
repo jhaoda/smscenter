@@ -258,9 +258,6 @@ class SMSCenter implements ArrayAccess {
 		}
 
 		$url = (($this['mode'] === self::SCHEME_HTTPS) ? 'https' : 'http').'://smsc.ru/sys/'.$cmd.'.php?';
-		//Say::dump($options);
-		Say::dump($data);
-		return;
 
 		$i = 0;
 		do {
