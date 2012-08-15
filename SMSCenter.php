@@ -289,8 +289,6 @@ class SMSCenter implements ArrayAccess {
 	 * @throws Exception
 	 */
 	private function exec($request) {
-		Say::dump($request);
-
 		$ret = NULL;
 
 		$isPOST = $this['method'] == self::METHOD_POST || strlen($request) > 2000;
