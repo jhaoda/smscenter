@@ -44,6 +44,7 @@
  *
  * @version 0.1
  * @author JhaoDa <jhaoda@gmail.com>
+ * @license http://creativecommons.org/licenses/by-sa/3.0/ CC BY-SA 3.0
  */
 class SMSCenter implements ArrayAccess {
 	private $options = array();

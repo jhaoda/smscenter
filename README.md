@@ -44,3 +44,4 @@ $smsc->getStatus('+7991111111', 6, SMSCenter::STATUS_INFO_EXT);
 $smsc->getCost('+7991111111', 'Начало около 251 млн лет, конец — 201 млн лет назад, длительность около 50 млн лет.');
 ?>
 ```
+Лицензия — [CC BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/ "Creative Commons Attribution-ShareAlike 3.0 Unported").
