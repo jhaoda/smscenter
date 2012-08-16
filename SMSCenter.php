@@ -44,7 +44,7 @@
  *
  * @version 0.1
  * @author JhaoDa <jhaoda@gmail.com>
- * @license http://creativecommons.org/licenses/by-sa/3.0/ CC BY-SA 3.0
+ * @license Да хоть как используйте. Упомянете меня — и на том спасибо.
  */
 class SMSCenter implements ArrayAccess {
 	private $options = array();
@@ -95,7 +95,7 @@ class SMSCenter implements ArrayAccess {
 	 * <pre>
 	 * $default = array(
 	 *		'login',	// логин
-	 *		'password', // пароль или MD5-хэш пароля
+	 *		'password',	// пароль или MD5-хэш пароля
 	 *		'translit',	// кодировать ли сообщении в транслит (self::TRANSLIT_NONE)
 	 *		'charset',	// кодировка запроса и ответа (self::CHARSET_UTF8)
 	 *		'method',	// метод передачи - GET или POST (self::METHOD_POST)
