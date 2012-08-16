@@ -88,6 +88,13 @@ class SMSCenter implements ArrayAccess {
 	const CHARSET_KOI8 = 'koi8-r';
 	const CHARSET_1251 = 'windows-1251';
 
+	const ZONE_RU	= 10;
+	const ZONE_UA	= 20;
+	const ZONE_SNG	= 30;
+	const ZONE_1	= 1;
+	const ZONE_2	= 2;
+	const ZONE_3	= 3;
+
 	/**
 	 * Инициализация.
 	 *
@@ -214,6 +221,27 @@ class SMSCenter implements ArrayAccess {
 		return $this->sendCmd('balance');
 	}
 
+	/**
+	 * Определение тарифной зоны.
+	 *
+	 * @param string $phone Номер телефона
+	 * @return int Номер тарифной зоны (константы self::ZONE_*)
+	 */
+	public function getChargingZone($phone) {
+		$patterns = array(
+			self::ZONE_RU => '~^\+?(79|73|74|78)~', self::ZONE_UA => '~^\+?380~', self::ZONE_SNG => '~^\+?(7940|374|375|995|77|996|370|992|993|998)~',
+			self::ZONE_1 => '~^\+?(994|213|244|376|54|93|880|973|591|387|58|84|241|233|502|852|299|20|972|91|92|62|962|964|98|353|354|855|237|1|254|357|57|242|506|965|856|231|423|352|261|389|60|960|356|52|976|971|595|503|966|381|65|421|386|66|255|216|598|63|385|382|56|94|593|372|27|1876|81)~',
+			self::ZONE_2 => '~^\+?(44|359|30|45|86|53|371|373|48|886|358|420|82)~'
+		);
+
+		$phone = $this->clearPhone($phone);
+
+		foreach($patterns as $key => $value) {
+			if (preg_match($value, $phone)) return $key;
+		}
+
+		return self::ZONE_3;
+	}
 
 	/**
 	 * Самая умная функция.
@@ -356,9 +384,9 @@ class SMSCenter implements ArrayAccess {
 		return preg_replace('~[^\d+]~', '', $phone);
 	}
 
-	private function validatePhone($phone) {
-		//TODO: Add phone validation
-	}
+//	private function validatePhone($phone) {
+//		//TODO: Add validation
+//	}
 //*********************************************************************************************************************
 
 	/**
