@@ -24,13 +24,13 @@
  *	));
  *
  *	// Отправка сообщения
- *	$smsc->sendMessage('+7991111111', 'Превед, медведы!', 'SuperIvan');
+ *	$smsc->send('+7991111111', 'Превед, медведы!', 'SuperIvan');
  *
  *	// Отправка сообщения на 2 номера
  *	$smsc->send(array('+7(999)1111111', '+7(999)222-22-22'), 'Превед, медведы! Одно сообщение на 2 номера.', 'SuperIvan');
  *
  *	// Получение баланса
- *	$smsc->getBalance();
+ *	echo $smsc->getBalance(), ' руб.'; // "72.2 руб." при FMT_JSON
  *
  *	// Получение информации об операторе
  *	$smsc->getOperatorInfo('7991111111');
@@ -40,6 +40,9 @@
  *
  *	// Получение стоимости рассылки
  *	$smsc->getCost('+7991111111', 'Начало около 251 млн лет, конец — 201 млн лет назад, длительность около 50 млн лет.');
+ *
+ *	// Проверка тарифной зоны
+ *	if ($sms->getChargingZone('+7(999)1111111') == self::ZONE_RU) {...}
  * </pre>
  *
  * @version 0.1
@@ -80,9 +83,9 @@ class SMSCenter implements ArrayAccess {
 	const FMT_XML		 = 2;
 	const FMT_JSON		 = 3;
 
-	const STATUS_PLAIN	  = 0;
-	const STATUS_INFO	  = 1;
-	const STATUS_INFO_EXT = 2;
+	const STATUS_PLAIN		= 0;
+	const STATUS_INFO		= 1;
+	const STATUS_INFO_EXT	= 2;
 
 	const CHARSET_UTF8 = 'utf-8';
 	const CHARSET_KOI8 = 'koi8-r';
@@ -218,7 +221,7 @@ class SMSCenter implements ArrayAccess {
 	 * @return string|stdClass Баланс в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
 	 */
 	public function getBalance() {
-		return $this->sendCmd('balance');
+		return ($this['fmt'] == self::FMT_JSON) ? $this->sendCmd('balance')->balance : $this->sendCmd('balance');
 	}
 
 	/**
@@ -291,8 +294,6 @@ class SMSCenter implements ArrayAccess {
 		$i = 0;
 		do {
 			if ($i) sleep(2);
-
-
 			$ret = $this->exec($url.implode('&', $data));
 		} while ($ret == '' && ++$i < 3);
 
@@ -301,11 +302,9 @@ class SMSCenter implements ArrayAccess {
 				$ret = mb_convert_encoding($ret, 'UTF-8', 'WINDOWS-1251');
 			else if ($this['charset'] == self::CHARSET_KOI8)
 				$ret = mb_convert_encoding($ret, 'UTF-8', 'KOI8-R');
-
-			$ret = json_decode($ret);
 		}
 
-		return (empty($ret)) ? FALSE : $ret;
+		return (empty($ret)) ? FALSE : ($this['fmt'] == self::FMT_JSON) ? $ret = json_decode($ret) : $ret;
 	}
 
 	/**
