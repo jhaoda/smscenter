@@ -45,8 +45,9 @@
  *	if ($sms->getChargingZone('+7(999)1111111') == self::ZONE_RU) {...}
  * </pre>
  *
- * @version 0.2
+ * @version 1.0.0
  * @author JhaoDa <jhaoda@gmail.com>
+ * @link https://github.com/jhaoda/SMSCenter
  * @license http://www.apache.org/licenses/LICENSE-2.0
  *
  * Copyright 2013 JhaoDa
@@ -63,10 +64,7 @@
 namespace JhaoDa\SMSCenter;
 
 class SMSCenter implements \ArrayAccess {
-	private $options = [];
-	private $types = [0 => '', 1 => 'flash=1', 2 => 'push=1', 3 => 'hlr=1', 4 => 'bin=1', 5 => 'bin=2', 6 =>'ping=1'];
-
-	private static $curl = null;
+	const VERSION = '1.0.0';
 
 	const SCHEME_HTTP  = 1;
 	const SCHEME_HTTPS = 2;
@@ -110,6 +108,11 @@ class SMSCenter implements \ArrayAccess {
 	const ZONE_1   = 1;
 	const ZONE_2   = 2;
 	const ZONE_3   = 3;
+
+	private $options = [];
+	private $types = [0 => '', 1 => 'flash=1', 2 => 'push=1', 3 => 'hlr=1', 4 => 'bin=1', 5 => 'bin=2', 6 =>'ping=1'];
+
+	private static $curl = null;
 
 	/**
 	 * Инициализация.
@@ -168,7 +171,8 @@ class SMSCenter implements \ArrayAccess {
 	 */
 	public function send($phones, $message, $sender, $options = []) {
 		$options['phones'] = $phones;
-		if ($message !== null ) {
+		
+		if ($message !== null) {
 			$options['mes'] = $message;
 		}
 		if ($sender !== null ) {
@@ -468,48 +472,34 @@ class SMSCenter implements \ArrayAccess {
 	}
 
 	/**
-	 * Sets a parameter.
-	 *
-	 * @param string $key    The unique identifier for the parameter
-	 * @param mixed  $value The value of the parameter
+	 * {@inheritdoc}
 	 */
-	public function offsetSet($key, $value) {
-		$this->options[$key] = $value;
+	public function offsetSet($offset, $value) {
+		$this->options[$offset] = $value;
 	}
 
 	/**
-	 * Gets a parameter.
-	 *
-	 * @param string $key The unique identifier for the parameter
-	 *
-	 * @throws \InvalidArgumentException if the identifier is not defined
-	 *
-	 * @return mixed The value of the parameter
+	 * {@inheritdoc}
+	 * @throws \InvalidArgumentException if the offset is not exists
 	 */
-	public function offsetGet($key) {
-		if (!array_key_exists($key, $this->options)) {
-			throw new \InvalidArgumentException(sprintf("'Identifier SMSCenter.options['%s'] is not defined.'", $key));
+	public function offsetGet($offset) {
+		if (!array_key_exists($offset, $this->options)) {
+			throw new \InvalidArgumentException(sprintf("'Identifier SMSCenter.options['%s'] is not defined.'", $offset));
 		}
-		return $this->options[$key];
+		return $this->options[$offset];
 	}
 
 	/**
-	 * Checks if a parameter is set.
-	 *
-	 * @param string $key The unique identifier for the parameter
-	 *
-	 * @return Boolean
+	 * {@inheritdoc}
 	 */
-	public function offsetExists($key) {
-		return array_key_exists($key, $this->options);
+	public function offsetExists($offset) {
+		return array_key_exists($offset, $this->options);
 	}
 
 	/**
-	 * Unsets a parameter.
-	 *
-	 * @param string $key The unique identifier for the parameter
+	 * {@inheritdoc}
 	 */
-	public function offsetUnset($key) {
-		unset($this->options[$key]);
+	public function offsetUnset($offset) {
+		unset($this->options[$offset]);
 	}
 }
