@@ -61,7 +61,7 @@
  */
 namespace JhaoDa\SMSCenter;
 
-class SMSCenter implements \ArrayAccess {
+class SMSCenter {
 	const VERSION = '2.0.0-dev';
 
 	const MSG_SMS   = 0;
@@ -105,7 +105,15 @@ class SMSCenter implements \ArrayAccess {
 	private $password;
 	private $useSSL;
 	private $options = [];
-	private $types = [0 => '', 1 => 'flash=1', 2 => 'push=1', 3 => 'hlr=1', 4 => 'bin=1', 5 => 'bin=2', 6 =>'ping=1'];
+	private $types = ['', 'flash=1', 'push=1', 'hlr=1', 'bin=1', 'bin=2', 'ping=1'];
+
+	private static $chargingZonePatterns = [
+		self::ZONE_RU  => '~^\+?(79|73|74|78)~',
+		self::ZONE_UA  => '~^\+?380~',
+		self::ZONE_SNG => '~^\+?(7940|374|375|995|77|996|370|992|993|998)~',
+		self::ZONE_1   => '~^\+?(994|213|244|376|54|93|880|973|591|387|58|84|241|233|502|852|299|20|972|91|92|62|962|964|98|353|354|855|237|1|254|357|57|242|506|965|856|231|423|352|261|389|60|960|356|52|976|971|595|503|966|381|65|421|386|66|255|216|598|63|385|382|56|94|593|372|27|1876|81)~',
+		self::ZONE_2   => '~^\+?(44|359|30|45|86|53|371|373|48|886|358|420|82)~'
+	];
 
 	private static $curl = null;
 
@@ -116,7 +124,7 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @param string $login    логин
 	 * @param string $password пароль или MD5-хэш пароля
-	 * @param bool   $useSSL   использовать HTTPS
+	 * @param bool   $useSSL   использовать HTTPS?
 	 * @param array  $options  прочие параметры
 	 *
 	 * @return \JhaoDa\SMSCenter\SMSCenter
@@ -295,14 +303,14 @@ class SMSCenter implements \ArrayAccess {
 	 * @return string Баланс в виде строки или false в случае ошибки.
 	 */
 	public function getBalance($format = self::FMT_JSON) {
-		$ret = $this->sendRequest('balance', ['fmt' => $format]);
+		$response = $this->sendRequest('balance', ['fmt' => $format]);
 
 		if ($format == self::FMT_JSON) {
-			return $ret->balance;
+			return json_decode($response)->balance;
 		} elseif ($format == self::FMT_XML) {
-			return preg_replace('~</*balance>~', '', $ret);
+			return preg_replace('~</*balance>~', '', $response);
 		} else {
-			return $ret;
+			return $response;
 		}
 	}
 
@@ -314,17 +322,9 @@ class SMSCenter implements \ArrayAccess {
 	 * @return int Номер тарифной зоны (константы self::ZONE_*)
 	 */
 	public function getChargingZone($phone) {
-		$patterns = [
-			self::ZONE_SNG => '~^\+?(7940|374|375|995|77|996|370|992|993|998)~',
-			self::ZONE_RU  => '~^\+?(79|73|74|78)~',
-			self::ZONE_UA  => '~^\+?380~',
-			self::ZONE_1   => '~^\+?(994|213|244|376|54|93|880|973|591|387|58|84|241|233|502|852|299|20|972|91|92|62|962|964|98|353|354|855|237|1|254|357|57|242|506|965|856|231|423|352|261|389|60|960|356|52|976|971|595|503|966|381|65|421|386|66|255|216|598|63|385|382|56|94|593|372|27|1876|81)~',
-			self::ZONE_2   => '~^\+?(44|359|30|45|86|53|371|373|48|886|358|420|82)~'
-		];
-
 		$phone = $this->clearPhone($phone);
 
-		foreach($patterns as $key => $value) {
+		foreach(self::$chargingZonePatterns as $key => $value) {
 			if (preg_match($value, $phone)) {
 				return $key;
 			}
@@ -390,11 +390,7 @@ class SMSCenter implements \ArrayAccess {
 			}
 		}
 
-		if (!empty($ret)) {
-			return $options['fmt'] == self::FMT_JSON ? json_decode($ret) : $ret;
-		} else {
-			return false;
-		}
+		return !empty($ret) ? $ret : false;
 	}
 
 	/**
@@ -409,83 +405,46 @@ class SMSCenter implements \ArrayAccess {
 	 */
 	private function execRequest($resource, array $params) {
 		$url = ($this->useSSL ? 'https' : 'http') . '://smsc.ru/sys/'.$resource.'.php';
-		$post = implode('&', $params);
+		$query = implode('&', $params);
+		$isPOST = $resource === 'send' ? true : false;
 
 		if (function_exists('curl_init')) {
+			if (!self::$curl) {
+				self::$curl = curl_init();
+				curl_setopt_array(self::$curl, [
+					CURLOPT_RETURNTRANSFER => true,
+					CURLOPT_SSL_VERIFYPEER => false,
+					CURLOPT_CONNECTTIMEOUT => 5,
+					CURLOPT_TIMEOUT => 10
+				]);
+			}
 
+			if ($isPOST) {
+				curl_setopt_array(self::$curl, [
+					CURLOPT_URL => $url,
+					CURLOPT_POST => true,
+					CURLOPT_POSTFIELDS => $query,
+				]);
+			} else {
+				curl_setopt(self::$curl, CURLOPT_URL, $url . '?' . $query);
+			}
+
+			$response = curl_exec(self::$curl);
 		} else {
-			$context = stream_context_create([
-				'http' => [
+			$options = ['timeout' => 5];
+
+			if ($isPOST) {
+				$options = array_merge($options, [
 					'method' => 'POST',
 					'header' => "Content-type: application/x-www-form-urlencoded\r\n",
-					'content' => $post,
-					'timeout' => 15,
-				],
-			]);
+					'content' => $query,
+				]);
+			} else {
+				$url .= '?' . $query;
+			}
 
-			$response = file_get_contents($url, false, $context);
+			$response = file_get_contents($url, false, stream_context_create(['http' => $options]));
 		}
-
-
-//		$isPOST = ($this['method'] == self::METHOD_POST) || (strlen($request) > 2000);
-//
-//		if (function_exists('curl_init')) {
-//			// пробуем через curl
-//			if (!self::$curl) {
-//				self::$curl = curl_init();
-//				curl_setopt(self::$curl, CURLOPT_RETURNTRANSFER, true);
-//				curl_setopt(self::$curl, CURLOPT_CONNECTTIMEOUT, 5);
-//				curl_setopt(self::$curl, CURLOPT_TIMEOUT, 5);
-//				curl_setopt(self::$curl, CURLOPT_SSL_VERIFYPEER, 0);
-//			}
-//
-//			if ($isPOST) {
-//				list($url, $query) = explode('?', $request, 2);
-//				curl_setopt(self::$curl, CURLOPT_POST, true);
-//				curl_setopt(self::$curl, CURLOPT_POSTFIELDS, $query);
-//				curl_setopt(self::$curl, CURLOPT_URL, $url);
-//			} else {
-//				curl_setopt(self::$curl, CURLOPT_URL, $request);
-//			}
-//
-//			$ret = curl_exec(self::$curl);
-//		} elseif (function_exists('fsockopen')) {
-//			$m = parse_url($request);
-//
-//			if ($this['mode'] == self::SCHEME_HTTPS) {
-//				if (extension_loaded('openssl')) {
-//					$fp = fsockopen('ssl://'.$m['host'], 443, $errno, $errstr, 10);
-//				} else {
-//					throw new \RuntimeException('Can not perform HTTPS request. OpenSSL extension not loaded.');
-//				}
-//			} else {
-//				$fp = fsockopen($m['host'], 80, $errno, $errstr, 10);
-//			}
-//
-//			if ($fp) {
-//				stream_set_timeout($fp, 2);
-//
-//				fwrite($fp, ($isPOST ? "POST $m[path]" : "GET $m[path]?$m[query]").
-//						" HTTP/1.1\r\nHost: smsc.ru\r\nUser-Agent: PHP".
-//						($isPOST ? "\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: ".strlen($m['query']) : "").
-//						"\r\nConnection: Close\r\n\r\n".($isPOST ? $m['query'] : ""));
-//
-//				while (!feof($fp))
-//					$ret .= fgets($fp, 1024);
-//
-//				list(, $ret) = explode("\r\n\r\n", $ret, 2);
-//
-//				fclose($fp);
-//			} else {
-//				throw new \RuntimeException($errstr, $errno);
-//			}
-//		} else {
-//			if ($isPOST) {
-//				throw new \Exception('file_get_contents can not send data over POST.');
-//			}
-//
-//			$ret = file_get_contents($request);
-//		}
 
 		return $response;
 	}
@@ -502,37 +461,5 @@ class SMSCenter implements \ArrayAccess {
 	 */
 	public static function clearPhone($phone) {
 		return preg_replace('~[^\d+]~', '', $phone);
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function offsetSet($offset, $value) {
-		$this->options[$offset] = $value;
-	}
-
-	/**
-	 * {@inheritdoc}
-	 * @throws \InvalidArgumentException if the offset is not exists
-	 */
-	public function offsetGet($offset) {
-		if (!array_key_exists($offset, $this->options)) {
-			throw new \InvalidArgumentException(sprintf("'Identifier SMSCenter.options['%s'] is not defined.'", $offset));
-		}
-		return $this->options[$offset];
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function offsetExists($offset) {
-		return array_key_exists($offset, $this->options);
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function offsetUnset($offset) {
-		unset($this->options[$offset]);
 	}
 }
