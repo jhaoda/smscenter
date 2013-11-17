@@ -17,14 +17,14 @@
  *
  * Примеры использования:
  * <pre>
- *	$smsc = new SMSCenter(array(
+ *	$smsc = new SMSCenter([
  *		'login'	   => 'ivan',
  *		'password' => md5('ivanovich'),
  *		'charset' => SMSCenter::CHARSET_UTF8
- *	));
+ *	]);
  *
  *	// Отправка сообщения
- *	$smsc->send('+7991111111', 'Превед, медведы!', 'SuperIvan');
+ *	$smsc->send('7991111111', 'Превед, медведы!', 'SuperIvan');
  *
  *	// Отправка сообщения на 2 номера
  *	$smsc->send(array('+7(999)1111111', '+7(999)222-22-22'), 'Превед, медведы! Одно сообщение на 2 номера.', 'SuperIvan');
@@ -126,13 +126,13 @@ class SMSCenter implements \ArrayAccess {
 	 *		'fmt',		// формат ответа сервера (self::FMT_JSON)
 	 *		'type',		// тип сообщения (self::MSG_SMS), замена push, ping, hlr и прочих
 	 *		'cost',		// запрашивать ли стоимость (self::COST_NO)
-	 *		'time',		// время отправки сообщения (NULL)
-	 *		'tz',		// часовой пояс параметра time (NULL)
-	 *		'id',		// идентификатор сообщения (NULL)
-	 *		'period',	// (NULL)
-	 *		'freq',		// (NULL)
-	 *		'maxsms',	// (NULL)
-	 *		'err'		// (NULL)
+	 *		'time',		// время отправки сообщения (null)
+	 *		'tz',		// часовой пояс параметра time (null)
+	 *		'id',		// идентификатор сообщения (null)
+	 *		'period',	// (null)
+	 *		'freq',		// (null)
+	 *		'maxsms',	// (null)
+	 *		'err'		// (null)
 	 * 	];
 	 * </pre>
 	 *
@@ -185,7 +185,7 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @param string|array $phones Номера телефонов
 	 *
-	 * @return bool|string|\stdClass Результат выполнения запроса в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
+	 * @return bool|string|\stdClass Результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
 	 */
 	public function pingPhone($phones) {
 		return $this->send($phones, null, null, ['type' => self::MSG_PING]);
@@ -213,9 +213,9 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @access public
 	 *
-	 * @param string $phone Номер телефона
+	 * @param string     $phone Номер телефона
 	 * @param int|string $id    Идентификатор сообщения
-	 * @param int $mode  Вид ответа: обычный полный, расширеный
+	 * @param int        $mode  Вид ответа: обычный, полный, расширеный
 	 *
 	 * @return bool|string|\stdClass Статус сообщения в виде строки, объекта (FMT_JSON) или false в случае ошибки.
 	 */
@@ -234,7 +234,7 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @param string $phone Номер телефона
 	 *
-	 * @return bool|string|\stdClass Информация об операторе в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
+	 * @return bool|string|\stdClass Информация об операторе в виде строки, объекта (FMT_JSON) или false в случае ошибки.
 	 */
 	public function getOperatorInfo($phone) {
 		return $this->sendCmd('info', [
@@ -248,10 +248,20 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @access public
 	 *
-	 * @return string|\stdClass Баланс в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
+	 * @param int $format Формат ответа сервера (self::FMT_JSON)
+	 *
+	 * @return string Баланс в виде строки или false в случае ошибки.
 	 */
-	public function getBalance() {
-		return ($this['fmt'] == self::FMT_JSON) ? $this->sendCmd('balance')->balance : $this->sendCmd('balance');
+	public function getBalance($format = self::FMT_JSON) {
+		$ret = $this->sendCmd('balance', ['fmt' => $format]);
+
+		if ($format == self::FMT_JSON) {
+			return $ret->balance;
+		} elseif ($format == self::FMT_XML) {
+			return preg_replace('~</*balance>~', '', $ret);
+		} else {
+			return $ret;
+		}
 	}
 
 	/**
@@ -313,8 +323,8 @@ class SMSCenter implements \ArrayAccess {
 			}
 		}
 
+		$data = ['login='.urlencode($options['login']), 'psw='.urlencode($options['password'])];
 		unset($options['password'], $options['login']);
-		$data = ['login='.urlencode($this['login']), 'psw='.urlencode($this['password'])];
 
 		foreach ($options as $key => $value) {
 			switch ($key) {
@@ -350,14 +360,19 @@ class SMSCenter implements \ArrayAccess {
 			$ret = $this->exec($url.implode('&', $data));
 		} while ($ret == '' && ++$i < 3);
 
-		if (($cmd == 'info' || $cmd == 'status') && $this['fmt'] == self::FMT_JSON) {
-			if ($this['charset'] == self::CHARSET_1251)
+		if (($cmd == 'info' || $cmd == 'status') && $options['fmt'] == self::FMT_JSON) {
+			if ($options['charset'] == self::CHARSET_1251) {
 				$ret = mb_convert_encoding($ret, 'UTF-8', 'WINDOWS-1251');
-			else if ($this['charset'] == self::CHARSET_KOI8)
+			} elseif ($options['charset'] == self::CHARSET_KOI8) {
 				$ret = mb_convert_encoding($ret, 'UTF-8', 'KOI8-R');
+			}
 		}
 
-		return (empty($ret)) ? false : ($this['fmt'] == self::FMT_JSON) ? $ret = json_decode($ret) : $ret;
+		if (!empty($ret)) {
+			return $options['fmt'] == self::FMT_JSON ? json_decode($ret) : $ret;
+		} else {
+			return false;
+		}
 	}
 
 	/**
@@ -397,7 +412,7 @@ class SMSCenter implements \ArrayAccess {
 			}
 
 			$ret = curl_exec(self::$curl);
-		} else if (function_exists('fsockopen')) {
+		} elseif (function_exists('fsockopen')) {
 			$m = parse_url($request);
 
 			if ($this['mode'] == self::SCHEME_HTTPS) {
@@ -438,57 +453,63 @@ class SMSCenter implements \ArrayAccess {
 		return $ret;
 	}
 
+	/**
+	 * Удаляет из номера любые символы, кроме цифр.
+	 *
+	 * @static
+	 * @access public
+	 *
+	 * @param $phone
+	 *
+	 * @return string
+	 */
 	public static function clearPhone($phone) {
 		return preg_replace('~[^\d+]~', '', $phone);
 	}
 
-//	private function validatePhone($phone) {
-//		//TODO: Add validation
-//	}
-//*********************************************************************************************************************
-
 	/**
 	 * Sets a parameter.
 	 *
-	 * @param string $id    The unique identifier for the parameter
+	 * @param string $key    The unique identifier for the parameter
 	 * @param mixed  $value The value of the parameter
 	 */
-	public function offsetSet($id, $value) {
-		$this->options[$id] = $value;
+	public function offsetSet($key, $value) {
+		$this->options[$key] = $value;
 	}
 
 	/**
 	 * Gets a parameter.
 	 *
-	 * @param string $id The unique identifier for the parameter
+	 * @param string $key The unique identifier for the parameter
 	 *
 	 * @throws \InvalidArgumentException if the identifier is not defined
 	 *
 	 * @return mixed The value of the parameter
 	 */
-	public function offsetGet($id) {
-		if (!array_key_exists($id, $this->options))
-			throw new \InvalidArgumentException(sprintf('Identifier "%s" is not defined.', $id));
-		return $this->options[$id];
+	public function offsetGet($key) {
+		if (!array_key_exists($key, $this->options)) {
+			throw new \InvalidArgumentException(sprintf("'Identifier SMSCenter.options['%s'] is not defined.'", $key));
+		}
+		return $this->options[$key];
 	}
 
 	/**
 	 * Checks if a parameter is set.
 	 *
-	 * @param string $id The unique identifier for the parameter
+	 * @param string $key The unique identifier for the parameter
 	 *
 	 * @return Boolean
 	 */
-	public function offsetExists($id) {
-		return array_key_exists($id, $this->options);
+	public function offsetExists($key) {
+		return array_key_exists($key, $this->options);
 	}
 
 	/**
 	 * Unsets a parameter.
 	 *
-	 * @param string $id The unique identifier for the parameter
+	 * @param string $key The unique identifier for the parameter
 	 */
-	public function offsetUnset($id) {
-		unset($this->options[$id]);
+	public function offsetUnset($key) {
+		unset($this->options[$key]);
 	}
 }
