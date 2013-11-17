@@ -45,7 +45,7 @@
  *	if ($sms->getChargingZone('+7(999)1111111') == self::ZONE_RU) {...}
  * </pre>
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @author JhaoDa <jhaoda@gmail.com>
  * @link https://github.com/jhaoda/SMSCenter
  * @license http://www.apache.org/licenses/LICENSE-2.0
@@ -64,7 +64,7 @@
 namespace JhaoDa\SMSCenter;
 
 class SMSCenter implements \ArrayAccess {
-	const VERSION = '1.0.0';
+	const VERSION = '1.0.1';
 
 	const SCHEME_HTTP  = 1;
 	const SCHEME_HTTPS = 2;
@@ -167,17 +167,13 @@ class SMSCenter implements \ArrayAccess {
 	 * @param string       $sender  Имя отправителя
 	 * @param array        $options Дополнительные параметры
 	 *
-	 * @return bool|string|\stdClass Результат выполнения запроса в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
+	 * @throws \InvalidArgumentException если список телефонов пуст или длина сообщения больше 800 символов
+	 * @return bool|string|\stdClass Результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
 	 */
-	public function send($phones, $message, $sender, $options = []) {
+	public function send($phones, $message, $sender = null, $options = []) {
 		$options['phones'] = $phones;
-		
-		if ($message !== null) {
-			$options['mes'] = $message;
-		}
-		if ($sender !== null ) {
-			$options['sender'] = $sender;
-		}
+		$options['mes'] = $message;
+		$options['sender'] = $sender;
 
 		return $this->sendCmd('send', $options);
 	}
@@ -311,17 +307,25 @@ class SMSCenter implements \ArrayAccess {
 		$options = array_merge($this->options, $options);
 
 		if ($cmd === 'send') {
-			if (!empty($options['phones'])) {
-				if (is_array($options['phones'])) {
-					$options['phones'] = array_map(__CLASS__.'::clearPhone', $options['phones']);
-					$options['phones'] = implode(';', $options['phones']);
-				} else {
-					$options['phones'] = self::clearPhone($options['phones']);
-				}
+			// отправка сообщения
+			if (empty($options['phones'])) {
+				throw new \InvalidArgumentException('The phone (or list of phones) is empty.');
+			}
+
+			if (is_array($options['phones'])) {
+				$options['phones'] = array_map(__CLASS__.'::clearPhone', $options['phones']);
+				$options['phones'] = implode(';', $options['phones']);
 			} else {
-				throw new \InvalidArgumentException('Phones is empty.');
+				$options['phones'] = self::clearPhone($options['phones']);
+			}
+
+			if (empty($options['mes'])) {
+				throw new \InvalidArgumentException('The message is empty.');
+			} elseif (mb_strlen($options['mes'], 'UTF-8') > 800) {
+				throw new \InvalidArgumentException('The maximum length of a message is 800 symbols.');
 			}
 		} else {
+			// запрос баланса, статуса, информации об операторе
 			if (isset($options['phone'])) {
 				$options['phone'] = self::clearPhone($options['phone']);
 			}
@@ -343,8 +347,9 @@ class SMSCenter implements \ArrayAccess {
 					}
 					break;
 				case 'type':
-					if ((int)$value > 0 && (int)$value < 7) {
-						$data[] = $this->types[(int)$value];
+					$value = (int)$value;
+					if ($value > 0 && $value < 7) {
+						$data[] = $this->types[$value];
 					}
 					break;
 				default:
