@@ -17,9 +17,7 @@
  *
  * Примеры использования:
  * <pre>
- *	$smsc = new SMSCenter([
- *		'login'	   => 'ivan',
- *		'password' => md5('ivanovich'),
+ *	$smsc = new SMSCenter('ivan', md5('ivanovich'), [
  *		'charset' => SMSCenter::CHARSET_UTF8
  *	]);
  *
@@ -45,7 +43,7 @@
  *	if ($sms->getChargingZone('+7(999)1111111') == self::ZONE_RU) {...}
  * </pre>
  *
- * @version 1.0.1
+ * @version 1.2.0
  * @author JhaoDa <jhaoda@gmail.com>
  * @link https://github.com/jhaoda/SMSCenter
  * @license http://www.apache.org/licenses/LICENSE-2.0
@@ -64,13 +62,7 @@
 namespace JhaoDa\SMSCenter;
 
 class SMSCenter implements \ArrayAccess {
-	const VERSION = '1.0.1';
-
-	const SCHEME_HTTP  = 1;
-	const SCHEME_HTTPS = 2;
-
-	const METHOD_GET  = 1;
-	const METHOD_POST = 2;
+	const VERSION = '1.2.0';
 
 	const MSG_SMS   = 0;
 	const MSG_FLASH = 1;
@@ -109,6 +101,9 @@ class SMSCenter implements \ArrayAccess {
 	const ZONE_2   = 2;
 	const ZONE_3   = 3;
 
+	private $login;
+	private $password;
+	private $useSSL;
 	private $options = [];
 	private $types = [0 => '', 1 => 'flash=1', 2 => 'push=1', 3 => 'hlr=1', 4 => 'bin=1', 5 => 'bin=2', 6 =>'ping=1'];
 
@@ -117,41 +112,23 @@ class SMSCenter implements \ArrayAccess {
 	/**
 	 * Инициализация.
 	 *
-	 * Допустимые ключи следующие (в скобках значения по-умолчанию):
-	 * <pre>
-	 *  $default = [
-	 *		'login',	// логин
-	 *		'password',	// пароль или MD5-хэш пароля
-	 *		'translit',	// кодировать ли сообщении в транслит (self::TRANSLIT_NONE)
-	 *		'charset',	// кодировка запроса и ответа (self::CHARSET_UTF8)
-	 *		'method',	// метод передачи - GET или POST (self::METHOD_POST)
-	 *		'scheme',	// HTTP/HTTPS режим (self::SCHEME_HTTP), для HTTPS в Windows требуется включить расширение OpenSSL
-	 *		'fmt',		// формат ответа сервера (self::FMT_JSON)
-	 *		'type',		// тип сообщения (self::MSG_SMS), замена push, ping, hlr и прочих
-	 *		'cost',		// запрашивать ли стоимость (self::COST_NO)
-	 *		'time',		// время отправки сообщения (null)
-	 *		'tz',		// часовой пояс параметра time (null)
-	 *		'id',		// идентификатор сообщения (null)
-	 *		'period',	// (null)
-	 *		'freq',		// (null)
-	 *		'maxsms',	// (null)
-	 *		'err'		// (null)
-	 * 	];
-	 * </pre>
-	 *
 	 * @access public
 	 *
-	 * @param array $options Настройки
+	 * @param string $login    логин
+	 * @param string $password пароль или MD5-хэш пароля
+	 * @param bool   $useSSL   использовать HTTPS
+	 * @param array  $options  прочие параметры
 	 *
 	 * @return \JhaoDa\SMSCenter\SMSCenter
 	 */
-	public function __construct($options = []) {
+	public function __construct($login, $password, $useSSL = false, array $options = []) {
+		$this->login = $login;
+		$this->password = $password;
+		$this->useSSL = $useSSL;
+
 		$default = [
-			'login'    => '',
-			'password' => '',
-			'method'   => self::METHOD_POST,
-			'mode'     => self::SCHEME_HTTP,
-			'fmt'      => self::FMT_JSON,
+			'charset' => self::CHARSET_UTF8,
+			'fmt'     => self::FMT_JSON,
 		];
 
 		$this->options = array_merge($default, $options);
@@ -170,12 +147,61 @@ class SMSCenter implements \ArrayAccess {
 	 * @throws \InvalidArgumentException если список телефонов пуст или длина сообщения больше 800 символов
 	 * @return bool|string|\stdClass Результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
 	 */
-	public function send($phones, $message, $sender = null, $options = []) {
-		$options['phones'] = $phones;
-		$options['mes'] = $message;
-		$options['sender'] = $sender;
+	public function send($phones, $message, $sender = null, array $options = []) {
+		if (empty($phones)) {
+			throw new \InvalidArgumentException("The 'phones' parameter is empty.");
+		} else {
+			if (is_array($phones)) {
+				$phones = array_map(__CLASS__.'::clearPhone', $phones);
+				$phones = implode(';', $phones);
+			} else {
+				$phones = self::clearPhone($phones);
+			}
+		}
 
-		return $this->sendCmd('send', $options);
+		if ($message !== null && empty($message)) {
+			throw new \InvalidArgumentException('The message is empty.');
+		} elseif (mb_strlen($message, 'UTF-8') > 800) {
+			throw new \InvalidArgumentException('The maximum length of a message is 800 symbols.');
+		}
+
+		$options['phones'] = $phones;
+		$options['mes']    = $message;
+
+		if ($sender !== null) {
+			$options['sender'] = $sender;
+		}
+
+		return $this->sendRequest('send', $options);
+	}
+
+	/**
+	 * Отправить разные сообщения на несколько номеров.
+	 *
+	 * @access public
+	 *
+	 * @param array  $list    Массив [номер => сообщение] или [номер, сообщение]
+	 * @param string $sender  Имя отправителя
+	 * @param array  $options Дополнительные параметры
+	 *
+	 * @return bool|string|\stdClass Результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
+	 */
+	public function sendMulti(array $list, $sender = null, array $options = []) {
+		foreach ($list as $key => $value) {
+			if (is_array($value)) {
+				$options['list'][] = self::clearPhone($value[0]) . ':' . str_replace("\n", '\n', $value[1]);
+			} else {
+				$options['list'][] = self::clearPhone($key) . ':' . str_replace("\n", '\n', $value);
+			}
+		}
+
+		$options['list'] = implode("\n", $options['list']);
+
+		if ($sender !== null) {
+			$options['sender'] = $sender;
+		}
+
+		return $this->sendRequest('send', $options);
 	}
 
 	/**
@@ -202,10 +228,26 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @return bool|string|\stdClass Стоимость рассылки в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
 	 */
-	public function getCost($phones, $message, $options = []) {
+	public function getCost($phones, $message, array $options = []) {
 		$options['cost'] = self::COST_ONLY;
 
 		return $this->send($phones, $message, null, $options);
+	}
+
+	/**
+	 * Получение стоимости рассылки разные сообщения на несколько номеров.
+	 *
+	 * @access public
+	 *
+	 * @param array $list    Массив [номер => сообщение] или [номер, сообщение]
+	 * @param array $options Дополнительные опции
+	 *
+	 * @return bool|string|\stdClass Стоимость рассылки в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
+	 */
+	public function getCostMulti(array $list, array $options = []) {
+		$options['cost'] = self::COST_ONLY;
+
+		return $this->sendMulti($list, null, $options);
 	}
 
 	/**
@@ -220,7 +262,7 @@ class SMSCenter implements \ArrayAccess {
 	 * @return bool|string|\stdClass Статус сообщения в виде строки, объекта (FMT_JSON) или false в случае ошибки.
 	 */
 	public function getStatus($phone, $id, $mode = self::STATUS_PLAIN) {
-		return $this->sendCmd('status', [
+		return $this->sendRequest('status', [
 			'phone' => $phone,
 			'id'    => (int)$id,
 			'all'   => (int)$mode,
@@ -237,7 +279,7 @@ class SMSCenter implements \ArrayAccess {
 	 * @return bool|string|\stdClass Информация об операторе в виде строки, объекта (FMT_JSON) или false в случае ошибки.
 	 */
 	public function getOperatorInfo($phone) {
-		return $this->sendCmd('info', [
+		return $this->sendRequest('info', [
 			'get_operator' => '1',
 			'phone'        => $phone
 		]);
@@ -253,7 +295,7 @@ class SMSCenter implements \ArrayAccess {
 	 * @return string Баланс в виде строки или false в случае ошибки.
 	 */
 	public function getBalance($format = self::FMT_JSON) {
-		$ret = $this->sendCmd('balance', ['fmt' => $format]);
+		$ret = $this->sendRequest('balance', ['fmt' => $format]);
 
 		if ($format == self::FMT_JSON) {
 			return $ret->balance;
@@ -296,80 +338,51 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @access private
 	 *
-	 * @param string $cmd
+	 * @param string $resource
 	 * @param array  $options
 	 *
 	 * @throws \InvalidArgumentException
 	 *
 	 * @return bool|string|\stdClass
 	 */
-	private function sendCmd($cmd, $options = []) {
+	private function sendRequest($resource, array $options) {
 		$options = array_merge($this->options, $options);
 
-		if ($cmd === 'send') {
-			// отправка сообщения
-			if (empty($options['phones'])) {
-				throw new \InvalidArgumentException('The phone (or list of phones) is empty.');
-			}
-
-			if (is_array($options['phones'])) {
-				$options['phones'] = array_map(__CLASS__.'::clearPhone', $options['phones']);
-				$options['phones'] = implode(';', $options['phones']);
-			} else {
-				$options['phones'] = self::clearPhone($options['phones']);
-			}
-
-			if (empty($options['mes'])) {
-				throw new \InvalidArgumentException('The message is empty.');
-			} elseif (mb_strlen($options['mes'], 'UTF-8') > 800) {
-				throw new \InvalidArgumentException('The maximum length of a message is 800 symbols.');
-			}
-		} else {
-			// запрос баланса, статуса, информации об операторе
-			if (isset($options['phone'])) {
+		if (in_array($resource, ['status', 'info'])) {
+			if (isset($options['phone']) && !empty($options['phone'])) {
 				$options['phone'] = self::clearPhone($options['phone']);
+			} else {
+				throw new \InvalidArgumentException("The 'phone' parameter is empty.");
 			}
 		}
 
-		$data = ['login='.urlencode($options['login']), 'psw='.urlencode($options['password'])];
-		unset($options['password'], $options['login']);
+		$params = [
+			'login='.urlencode($this->login),
+			'psw='.urlencode($this->password)
+		];
 
 		foreach ($options as $key => $value) {
 			switch ($key) {
-				case 'mode':
-				case 'method':
-					break;
-				case 'mes':
-				case 'phone':
-				case 'phones':
-					if (!empty($value)) {
-						$data[] = $key.'='.urlencode($value);
-					}
-					break;
 				case 'type':
 					$value = (int)$value;
 					if ($value > 0 && $value < 7) {
-						$data[] = $this->types[$value];
+						$params[] = $this->types[$value];
 					}
 					break;
 				default:
 					if (!empty($value)) {
-						$data[] = $key.'='.$value;
+						$params[] = $key . '=' . urlencode($value);
 					}
 			}
 		}
 
-		$url = (($this['mode'] === self::SCHEME_HTTPS) ? 'https' : 'http').'://smsc.ru/sys/'.$cmd.'.php?';
-
 		$i = 0;
 		do {
-			if ($i > 0) {
-				sleep(2);
-			}
-			$ret = $this->exec($url.implode('&', $data));
+			(!$i) || sleep(2);
+			$ret = $this->execRequest($resource, $params);
 		} while ($ret == '' && ++$i < 3);
 
-		if (($cmd == 'info' || $cmd == 'status') && $options['fmt'] == self::FMT_JSON) {
+		if (($resource == 'info' || $resource == 'status') && $options['fmt'] == self::FMT_JSON) {
 			if ($options['charset'] == self::CHARSET_1251) {
 				$ret = mb_convert_encoding($ret, 'UTF-8', 'WINDOWS-1251');
 			} elseif ($options['charset'] == self::CHARSET_KOI8) {
@@ -389,77 +402,92 @@ class SMSCenter implements \ArrayAccess {
 	 *
 	 * @access private
 	 *
-	 * @param string $request
-	 *
-	 * @throws \RuntimeException
-	 * @throws \Exception
+	 * @param string $resource
+	 * @param array  $params
 	 *
 	 * @return string Ответ сервера
 	 */
-	private function exec($request) {
-		$ret = null;
-
-		$isPOST = ($this['method'] == self::METHOD_POST) || (strlen($request) > 2000);
+	private function execRequest($resource, array $params) {
+		$url = ($this->useSSL ? 'https' : 'http') . '://smsc.ru/sys/'.$resource.'.php';
+		$post = implode('&', $params);
 
 		if (function_exists('curl_init')) {
-			// пробуем через curl
-			if (!self::$curl) {
-				self::$curl = curl_init();
-				curl_setopt(self::$curl, CURLOPT_RETURNTRANSFER, true);
-				curl_setopt(self::$curl, CURLOPT_CONNECTTIMEOUT, 5);
-				curl_setopt(self::$curl, CURLOPT_TIMEOUT, 5);
-				curl_setopt(self::$curl, CURLOPT_SSL_VERIFYPEER, 0);
-			}
 
-			if ($isPOST) {
-				list($url, $query) = explode('?', $request, 2);
-				curl_setopt(self::$curl, CURLOPT_POST, true);
-				curl_setopt(self::$curl, CURLOPT_POSTFIELDS, $query);
-				curl_setopt(self::$curl, CURLOPT_URL, $url);
-			} else {
-				curl_setopt(self::$curl, CURLOPT_URL, $request);
-			}
-
-			$ret = curl_exec(self::$curl);
-		} elseif (function_exists('fsockopen')) {
-			$m = parse_url($request);
-
-			if ($this['mode'] == self::SCHEME_HTTPS) {
-				if (extension_loaded('openssl')) {
-					$fp = fsockopen('ssl://'.$m['host'], 443, $errno, $errstr, 10);
-				} else {
-					throw new \RuntimeException('Can not perform HTTPS request. OpenSSL extension not loaded.');
-				}
-			} else {
-				$fp = fsockopen($m['host'], 80, $errno, $errstr, 10);
-			}
-
-			if ($fp) {
-				stream_set_timeout($fp, 2);
-
-				fwrite($fp, ($isPOST ? "POST $m[path]" : "GET $m[path]?$m[query]").
-						" HTTP/1.1\r\nHost: smsc.ru\r\nUser-Agent: PHP".
-						($isPOST ? "\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: ".strlen($m['query']) : "").
-						"\r\nConnection: Close\r\n\r\n".($isPOST ? $m['query'] : ""));
-
-				while (!feof($fp))
-					$ret .= fgets($fp, 1024);
-
-				list(, $ret) = explode("\r\n\r\n", $ret, 2);
-
-				fclose($fp);
-			} else {
-				throw new \RuntimeException($errstr, $errno);
-			}
 		} else {
-			if ($isPOST) {
-				throw new \Exception('file_get_contents can not send data over POST.');
-			}
+			$context = stream_context_create([
+				'http' => [
+					'method' => 'POST',
+					'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+					'content' => $post,
+					'timeout' => 15,
+				],
+			]);
 
-			$ret = file_get_contents($request);
+			$response = file_get_contents($url, false, $context);
 		}
 
-		return $ret;
+
+//		$isPOST = ($this['method'] == self::METHOD_POST) || (strlen($request) > 2000);
+//
+//		if (function_exists('curl_init')) {
+//			// пробуем через curl
+//			if (!self::$curl) {
+//				self::$curl = curl_init();
+//				curl_setopt(self::$curl, CURLOPT_RETURNTRANSFER, true);
+//				curl_setopt(self::$curl, CURLOPT_CONNECTTIMEOUT, 5);
+//				curl_setopt(self::$curl, CURLOPT_TIMEOUT, 5);
+//				curl_setopt(self::$curl, CURLOPT_SSL_VERIFYPEER, 0);
+//			}
+//
+//			if ($isPOST) {
+//				list($url, $query) = explode('?', $request, 2);
+//				curl_setopt(self::$curl, CURLOPT_POST, true);
+//				curl_setopt(self::$curl, CURLOPT_POSTFIELDS, $query);
+//				curl_setopt(self::$curl, CURLOPT_URL, $url);
+//			} else {
+//				curl_setopt(self::$curl, CURLOPT_URL, $request);
+//			}
+//
+//			$ret = curl_exec(self::$curl);
+//		} elseif (function_exists('fsockopen')) {
+//			$m = parse_url($request);
+//
+//			if ($this['mode'] == self::SCHEME_HTTPS) {
+//				if (extension_loaded('openssl')) {
+//					$fp = fsockopen('ssl://'.$m['host'], 443, $errno, $errstr, 10);
+//				} else {
+//					throw new \RuntimeException('Can not perform HTTPS request. OpenSSL extension not loaded.');
+//				}
+//			} else {
+//				$fp = fsockopen($m['host'], 80, $errno, $errstr, 10);
+//			}
+//
+//			if ($fp) {
+//				stream_set_timeout($fp, 2);
+//
+//				fwrite($fp, ($isPOST ? "POST $m[path]" : "GET $m[path]?$m[query]").
+//						" HTTP/1.1\r\nHost: smsc.ru\r\nUser-Agent: PHP".
+//						($isPOST ? "\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: ".strlen($m['query']) : "").
+//						"\r\nConnection: Close\r\n\r\n".($isPOST ? $m['query'] : ""));
+//
+//				while (!feof($fp))
+//					$ret .= fgets($fp, 1024);
+//
+//				list(, $ret) = explode("\r\n\r\n", $ret, 2);
+//
+//				fclose($fp);
+//			} else {
+//				throw new \RuntimeException($errstr, $errno);
+//			}
+//		} else {
+//			if ($isPOST) {
+//				throw new \Exception('file_get_contents can not send data over POST.');
+//			}
+//
+//			$ret = file_get_contents($request);
+//		}
+
+		return $response;
 	}
 
 	/**
