@@ -43,7 +43,7 @@
  *	if ($sms->getChargingZone('+7(999)1111111') == self::ZONE_RU) {...}
  * </pre>
  *
- * @version 1.2.0
+ * @version 2.0.0-dev
  * @author JhaoDa <jhaoda@gmail.com>
  * @link https://github.com/jhaoda/SMSCenter
  * @license http://www.apache.org/licenses/LICENSE-2.0
@@ -62,7 +62,7 @@
 namespace JhaoDa\SMSCenter;
 
 class SMSCenter implements \ArrayAccess {
-	const VERSION = '1.2.0';
+	const VERSION = '2.0.0-dev';
 
 	const MSG_SMS   = 0;
 	const MSG_FLASH = 1;
