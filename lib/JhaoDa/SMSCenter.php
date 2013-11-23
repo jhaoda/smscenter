@@ -96,7 +96,7 @@ class SMSCenter {
 
 		$default = [
 			'charset' => self::CHARSET_UTF8,
-			'fmt'     => self::FMT_JSON,
+			'fmt'     => self::FMT_JSON
 		];
 
 		$this->options = array_merge($default, $options);
@@ -157,10 +157,10 @@ class SMSCenter {
 	public function sendMulti(array $list, $sender = null, array $options = []) {
 		foreach ($list as $key => $value) {
 			if (is_array($value)) {
-				$options['list'][] = self::clearPhone($value[0]) . ':' . str_replace("\n", '\n', $value[1]);
-			} else {
-				$options['list'][] = self::clearPhone($key) . ':' . str_replace("\n", '\n', $value);
+				list($key, $value) = $value;
 			}
+
+			$options['list'][] = self::clearPhone($key) . ':' . str_replace("\n", '\n', $value);
 		}
 
 		$options['list'] = implode("\n", $options['list']);
@@ -324,8 +324,7 @@ class SMSCenter {
 		foreach ($options as $key => $value) {
 			switch ($key) {
 				case 'type':
-					$value = (int)$value;
-					if ($value > 0 && $value < 7) {
+					if ($value > 0 && $value < count($this->types)) {
 						$params[] = $this->types[$value];
 					}
 					break;
