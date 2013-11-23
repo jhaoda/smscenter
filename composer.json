@@ -1,18 +1,16 @@
 {
-	"name": "JhaoDa/SMSCenter",
+	"name": "jhaoda/smscenter",
 	"description": "PHP-класс для работы с API сервиса [smsc.ru](http://smsc.ru)",
 	"version": "2.0.0",
 	"type": "library",
 	"keywords": ["smsc", "smscenter", "smsc.ru"],
 	"homepage": "https://github.com/jhaoda/SMSCenter",
-	"time": "2013-11-17",
-	"license": "Apache License v2.0",
+	"time": "2013-11-23",
+	"license": "Apache-2.0",
 	"authors": [
 		{
 			"name": "JhaoDa",
-			"email": "jhaoda@gmail.com",
-			"homepage": "http://jhaoda.ru",
-			"role": "Developer"
+			"email": "jhaoda@gmail.com"
 		}
 	],
 	"support": {
