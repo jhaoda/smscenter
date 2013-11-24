@@ -3,7 +3,7 @@
 /**
  * Библиотека для работы с сервисом smsc.ru (SMS-Центр)
  *
- * @version 2.0.0-dev
+ * @version 2.0.0
  * @author JhaoDa <jhaoda@gmail.com>
  * @link https://github.com/jhaoda/SMSCenter
  * @license http://www.apache.org/licenses/LICENSE-2.0
@@ -22,7 +22,7 @@
 namespace JhaoDa\SMSCenter;
 
 class SMSCenter {
-	const VERSION = '2.0.0-dev';
+	const VERSION = '2.0.0';
 
 	const MSG_SMS   = 0;
 	const MSG_FLASH = 1;
