@@ -19,7 +19,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-namespace JhaoDa\SMSCenter;
+namespace SMSCenter;
 
 class SMSCenter {
 	const VERSION = '2.0.0';
@@ -87,7 +87,7 @@ class SMSCenter {
 	 * @param bool   $useSSL   использовать HTTPS?
 	 * @param array  $options  прочие параметры
 	 *
-	 * @return \JhaoDa\SMSCenter\SMSCenter
+	 * @return \SMSCenter\SMSCenter
 	 */
 	public function __construct($login, $password, $useSSL = false, array $options = []) {
 		$this->login = $login;

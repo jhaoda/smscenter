@@ -38,7 +38,7 @@ $default = [
 ```php
 <?php
 // Инициализация
-$smsc = new SMSCenter('ivan', md5('ivanovich'), false, [
+$smsc = new \SMSCenter\SMSCenter('ivan', md5('ivanovich'), false, [
 	'charset' => SMSCenter::CHARSET_UTF8
     'fmt' => SMSCenter::FMT_XML
 ]);
