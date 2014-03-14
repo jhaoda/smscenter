@@ -4,7 +4,7 @@
     "description": "Класс для работы с API сервиса smsc.ru",
     "keywords": ["smsc", "smscenter", "smsc.ru"],
     "homepage": "https://github.com/jhaoda/SMSCenter",
-    "time": "2013-11-23",
+    "time": "2014-03-14",
     "license": "Apache-2.0",
     "authors": [
         {
