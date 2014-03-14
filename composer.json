@@ -2,7 +2,6 @@
 	"name": "jhaoda/smscenter",
 	"type": "library",
 	"description": "PHP-класс для работы с API сервиса [smsc.ru](http://smsc.ru)",
-	"version": "2.0.0",
 	"keywords": ["smsc", "smscenter", "smsc.ru"],
 	"homepage": "https://github.com/jhaoda/SMSCenter",
 	"time": "2013-11-23",
