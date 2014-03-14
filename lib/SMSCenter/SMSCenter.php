@@ -24,7 +24,7 @@
 namespace SMSCenter;
 
 class SMSCenter {
-    const VERSION = '2.0.0';
+    const VERSION = '2.0.1';
 
     const MSG_SMS   = 0;
     const MSG_FLASH = 1;
