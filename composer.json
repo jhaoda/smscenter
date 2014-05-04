@@ -23,5 +23,6 @@
             "SMSCenter\\": "lib/"
         }
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "notify-batch": "http://jhaoda.ru/install-notify"
 }
