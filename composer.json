@@ -1,9 +1,9 @@
 {
     "name": "jhaoda/smscenter",
     "type": "library",
-    "description": "Класс для работы с API сервиса smsc.ru",
-    "keywords": ["smsc", "smscenter", "smsc.ru"],
-    "homepage": "https://github.com/jhaoda/SMSCenter",
+    "description": "Класс для работы с API сервиса СМС-Центр (smsc.ru)",
+    "keywords": ["sms", "smscentre", "smscenter", "smsc.ru", "api"],
+    "homepage": "https://github.com/jhaoda/smscenter",
     "license": "Apache-2.0",
     "authors": [
         {
@@ -12,17 +12,16 @@
         }
     ],
     "support": {
-        "source": "https://github.com/jhaoda/SMSCenter",
-        "issues": "https://github.com/jhaoda/SMSCenter/issues"
+        "source": "https://github.com/jhaoda/smscenter",
+        "issues": "https://github.com/jhaoda/smscenter/issues"
     },
     "require": {
-        "php": ">=5.4.0"
+        "php": ">=5.4.0",
+        "guzzlehttp/guzzle": "~6"
     },
     "autoload": {
-        "psr-0": {
-            "SMSCenter\\": "lib/"
+        "psr-4": {
+            "JhaoDa\\SmsCenter\\": "src/"
         }
-    },
-    "minimum-stability": "stable",
-    "notify-batch": "http://jhaoda.ru/install-notify"
+    }
 }
