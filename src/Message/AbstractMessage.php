@@ -3,7 +3,6 @@
 namespace JhaoDa\SmsCenter\Message;
 
 use JhaoDa\SmsCenter\Api;
-use JhaoDa\SmsCenter\Contract\Transliterable;
 use JhaoDa\SmsCenter\Exception;
 
 abstract class AbstractMessage
@@ -51,11 +50,9 @@ abstract class AbstractMessage
      */
     public function setCharset($charset)
     {
-        if (!in_array($charset, $this->charsetsArray)) {
-            $charset = self::CHARSET_UTF8;
+        if (in_array($charset, $this->charsetsArray)) {
+            $this->params['charset'] = $charset;
         }
-
-        $this->params['charset'] = $charset;
 
         return $this;
     }
@@ -105,11 +102,12 @@ abstract class AbstractMessage
      */
     public function toArray()
     {
-        $params = array_merge([
-            'phones'   => join(';', $this->phones),
-            'charset'  => self::CHARSET_UTF8,
-            'translit' => Transliterable::TRANSLIT_NONE
-        ], $this->params);
+        $default = [
+            'phones'  => join(';', $this->phones),
+            'charset' => self::CHARSET_UTF8
+        ];
+
+        $params = array_merge($default, $this->params);
 
         if ($this->message) {
             $params['mes'] = $this->message;

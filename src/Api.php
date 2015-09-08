@@ -143,7 +143,7 @@ class Api
         return $this->secure;
     }
 
-    private function getDefaultParams()
+    private function getMandatoryParams()
     {
         $defaults = [
             'login'  => $this->login,
@@ -160,7 +160,7 @@ class Api
 
     public function request($resource, $params = [])
     {
-        $params = array_merge($params, $this->getDefaultParams());
+        $params = array_merge($params, $this->getMandatoryParams());
 
         if (!isset($params['charset'])) {
             $params['charset'] = AbstractMessage::CHARSET_UTF8;
@@ -188,9 +188,7 @@ class Api
 
         /** @type AbstractMessage $message */
         foreach ($messages as $message) {
-            $params = array_merge($this->getDefaultParams(), $message->toArray());
-
-            //print_r($params);
+            $params = array_merge($this->getMandatoryParams(), $message->toArray());
             $promises[] = $this->getClient()->requestAsync('send', $params);
         }
 
