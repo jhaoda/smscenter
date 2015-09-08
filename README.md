@@ -34,14 +34,14 @@ $smsc = new \JhaoDa\SmsCenter\Api(
 
 #### Отправка одного сообщения
 ```php
-$ret = $sms->getCost(
+$ret = $sms->send(
     new \JhaoDa\SmsCenter\Message\Sms(
         '7991111111', 'Привет!'
     )
 );
 
 // на несколько номеров
-$ret = $sms->getCost(
+$ret = $sms->send(
     new \JhaoDa\SmsCenter\Message\Sms(
         ['79991111111', '7(999) 222-22-22'], 'Привет!'
     )
@@ -50,7 +50,7 @@ $ret = $sms->getCost(
 
 #### Отправка нескольких сообщений
 ```php
-$ret = $sms->getCost(
+$ret = $sms->send(
     new \JhaoDa\SmsCenter\Message\Sms(
         ['7(999) 111-11-11', '89992222222'], 'Привет!'
     ),
@@ -100,11 +100,12 @@ echo $sms->getStatus('7991111111', 47379, \JhaoDa\SMSCenter\Api::STATUS_INFO_EXT
 
 #### Проверка тарифной зоны
 ```php
-if ($sms->getChargingZone('79991111111') == self::ZONE_RU) {
+if ($sms->getChargingZone('79991111111') == \JhaoDa\SmsCenter\Api::ZONE_RU) {
     // ...
 }
 ```
 
+Вспомогательная функция для форматирования номера
 ```php
 echo \JhaoDa\SMSCenter\Api::formatPhone('8991111111');  // +7991111111
 echo \JhaoDa\SMSCenter\Api::formatPhone('+8991111111'); // +7991111111
