@@ -5,7 +5,7 @@ namespace JhaoDa\SmsCenter\Message;
 use JhaoDa\SmsCenter\Transliterable;
 use JhaoDa\SmsCenter\Contract\Transliterable as TransliterableContract;
 
-class Voice extends AbstractMessage implements TransliterableContract
+class Voice extends AbstractMessageWithAttachments implements TransliterableContract
 {
     use Transliterable;
 
@@ -15,6 +15,9 @@ class Voice extends AbstractMessage implements TransliterableContract
     const VOICE_FEMALE_2 = 'w2';
     const VOICE_FEMALE_3 = 'w3';
     const VOICE_FEMALE_4 = 'w4';
+
+    protected $maxFiles    = 4;
+    protected $maxFileSize = 3145728; // 3Mb
 
     public function __construct($phones, $message, $voice = self::VOICE_MALE)
     {

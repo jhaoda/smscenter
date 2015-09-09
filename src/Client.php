@@ -25,18 +25,20 @@ class Client
     }
 
     /**
+     * Выполнение синхронного POST-запроса.
+     *
      * @param  string  $resource
      * @param  array   $params
+     * @param  array   $files
+     * @param  bool    $async
      *
      * @return ResponseInterface
      */
-    public function request($resource, $params = [])
+    public function request($resource, $params = [], $files = [], $async = false)
     {
-        $async  = (isset($params['__async']) && ($params['__async'] == true));
         $method = $async ? 'postAsync' : 'post';
-        unset($params['__async']);
 
-        list($key, $params) = $this->createPayload($params);
+        list($key, $params) = $this->createPayload($params, $files);
 
         $response = $this->guzzle->{$method}($resource.'.php', [
             'connect_timeout' => $this->timeout,
@@ -48,25 +50,41 @@ class Client
     }
 
     /**
+     * Выполнение асинхронного POST-запроса.
+     *
      * @param  string  $resource
      * @param  array   $params
+     * @param  array   $files
      *
      * @return ResponseInterface
      */
-    public function requestAsync($resource, $params = [])
+    public function requestAsync($resource, $params = [], $files = [])
     {
-        $params['__async'] = true;
-
-        return $this->request($resource, $params);
+        return $this->request($resource, $params, $files, true);
     }
 
     /**
      * @param  array  $params
+     * @param  array  $files
      *
      * @return array
      */
-    private function createPayload($params)
+    private function createPayload($params, $files = [])
     {
-        return ['form_params', $params];
+        if (empty($files)) {
+            return ['form_params', $params];
+        }
+
+        $items = [];
+
+        foreach ($params as $key => $value) {
+            $items[] = ['name' => $key, 'contents' => (string) $value];
+        }
+
+        foreach ($files as $key => $file) {
+            $items[] = ['name' => 'file'.$key, 'contents' => fopen($file, 'r')];
+        }
+
+        return ['multipart', $items];
     }
 }

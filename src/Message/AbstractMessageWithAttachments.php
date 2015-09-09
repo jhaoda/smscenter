@@ -11,15 +11,15 @@ abstract class AbstractMessageWithAttachments extends AbstractMessage
     protected $maxFileSize = 524288; // 0.5Mb
 
     /**
-     * Добавить файл к сообщению.
+     * Добавить файлы к сообщению.
      *
-     * @param  string|array  $path  путь к файлу или массив путей к файлам
+     * @param  string|array  $path  путь к файлу или массив путей
      *
      * @throws Exception
      *
-     * @return bool
+     * @return $this
      */
-    public function addFile($path)
+    public function attach($path)
     {
         if (count($this->files) == $this->maxFiles) {
             throw new Exception(sprintf(
@@ -29,7 +29,7 @@ abstract class AbstractMessageWithAttachments extends AbstractMessage
 
         if (is_array($path)) {
             foreach ($path as $item) {
-                $this->addFile($item);
+                $this->attach($item);
             }
         }
 
@@ -47,6 +47,11 @@ abstract class AbstractMessageWithAttachments extends AbstractMessage
 
         $this->files[] = $path;
 
-        return true;
+        return $this;
+    }
+
+    public function getFiles()
+    {
+        return $this->files;
     }
 }

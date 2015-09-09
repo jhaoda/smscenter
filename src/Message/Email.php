@@ -4,8 +4,10 @@ namespace JhaoDa\SmsCenter\Message;
 
 use JhaoDa\SmsCenter\Exception;
 
-class Email extends AbstractMessage
+class Email extends AbstractMessageWithAttachments
 {
+    protected $maxFiles    = 4;
+    protected $maxFileSize = 1048576; // 1Mb
 
     public function __construct($phones, $message, $sender, $subject)
     {

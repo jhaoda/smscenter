@@ -3,18 +3,19 @@
 namespace JhaoDa\SmsCenter;
 
 use GuzzleHttp\Promise;
+use Psr\Http\Message\ResponseInterface;
 use JhaoDa\SmsCenter\Message\Sms;
 use JhaoDa\SmsCenter\Message\AbstractMessage;
 use JhaoDa\SmsCenter\Response\MessageResponse;
 use JhaoDa\SmsCenter\Response\StatusResponse;
 use JhaoDa\SmsCenter\Response\BalanceResponse;
 use JhaoDa\SmsCenter\Response\OperatorResponse;
-use Psr\Http\Message\ResponseInterface;
+use JhaoDa\SmsCenter\Message\AbstractMessageWithAttachments;
 
 /**
  * Библиотека для работы с сервисом SMS-Центр (smsc.ru).
  *
- * @version 3.0.0-dev
+ * @version 3.0.0-beta
  * @author  JhaoDa <jhaoda@gmail.com>
  * @link    https://github.com/jhaoda/smsc
  * @license http://www.apache.org/licenses/LICENSE-2.0
@@ -33,7 +34,7 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Api
 {
-    const VERSION = '3.0.0-dev';
+    const VERSION = '3.0.0-beta';
 
     const COST_NO      = 0;
     const COST_ONLY    = 1;
@@ -102,6 +103,9 @@ class Api
         $this->timeout  = $timeout;
     }
 
+    /**
+     * @return Client
+     */
     public function getClient()
     {
         if (!$this->client) {
@@ -112,6 +116,8 @@ class Api
     }
 
     /**
+     * Желаемый формат ответа.
+     *
      * @return int
      */
     public function getFormat()
@@ -120,6 +126,8 @@ class Api
     }
 
     /**
+     * Желаемый формат ответа.
+     *
      * @param int $format
      */
     public function setFormat($format)
@@ -158,7 +166,16 @@ class Api
         return $defaults;
     }
 
-    public function request($resource, $params = [])
+    /**
+     * Выполнение запроса.
+     *
+     * @param  string  $resource
+     * @param  array   $params
+     * @param  array   $files
+     *
+     * @return \Psr\Http\Message\StreamInterface
+     */
+    public function request($resource, $params = [],  $files = [])
     {
         $params = array_merge($params, $this->getMandatoryParams());
 
@@ -166,7 +183,7 @@ class Api
             $params['charset'] = AbstractMessage::CHARSET_UTF8;
         }
 
-        $response = $this->getClient()->request($resource, $params);
+        $response = $this->getClient()->request($resource, $params, $files);
 
         return $response->getBody();
     }
@@ -186,10 +203,12 @@ class Api
             $messages = [$messages];
         }
 
-        /** @type AbstractMessage $message */
+        /** @type AbstractMessageWithAttachments $message */
         foreach ($messages as $message) {
             $params = array_merge($this->getMandatoryParams(), $message->toArray());
-            $promises[] = $this->getClient()->requestAsync('send', $params);
+            $files  = $message instanceof AbstractMessageWithAttachments ? $message->getFiles() : [];
+
+            $promises[] = $this->getClient()->requestAsync('send', $params, $files);
         }
 
         /** @type ResponseInterface $item */
