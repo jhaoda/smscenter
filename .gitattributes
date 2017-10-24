@@ -1,1 +1,4 @@
-* text eol=lf
+* text=auto
+
+# Приводит все переводы строк в текстовых файлах к символу LF
+*.{php,md,json,gitignore,gitattributes} text eol=lf
