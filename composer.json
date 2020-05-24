@@ -16,7 +16,7 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "ramsey/uuid": "~3.0",
-        "guzzlehttp/guzzle": "~6.0",
+        "guzzlehttp/guzzle": "~6.0"
     },
     "require-dev": {
         "monolog/monolog": "^1.25|^2.0",
