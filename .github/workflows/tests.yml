@@ -38,10 +38,10 @@ jobs:
         run: composer validate
 
       - name: Install dependencies
-        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-suggest
+        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-suggest --no-progress
 
       - name: Execute tests
-        run: vendor/bin/phpunit --verbose --coverage-text --coverage-clover=coverage.clover
+        run: vendor/bin/phpunit --verbose --coverage-clover=coverage.clover
 
       - name: Prepare code coverage
         if: matrix.php == 7.4 && matrix.stability == 'prefer-stable'
