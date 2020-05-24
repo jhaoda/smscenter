@@ -38,8 +38,8 @@ $default = [
 ```php
 <?php
 // Инициализация
-$smsc = new \SMSCenter\SMSCenter('ivan', md5('ivanovich'), false, [
-    'charset' => SMSCenter::CHARSET_UTF8
+$smsc = new \SMSCenter\SMSCenter('login', 'password', false, [
+    'charset' => SMSCenter::CHARSET_UTF8,
     'fmt' => SMSCenter::FMT_XML
 ]);
 
@@ -75,7 +75,7 @@ $smsc->getOperatorInfo('7991111111');
 $smsc->getStatus('+7991111111', 6, SMSCenter::STATUS_INFO_EXT);
 
 // Проверка тарифной зоны
-if ($sms->getChargingZone('+79991111111') == self::ZONE_RU) {
+if ($sms->getChargingZone('+79991111111') === self::ZONE_RU) {
     ...
 }
 ```

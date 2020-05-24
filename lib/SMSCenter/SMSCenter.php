@@ -4,8 +4,8 @@
  * Библиотека для работы с сервисом smsc.ru (SMS-Центр)
  *
  * @version 2.0.0
- * @author JhaoDa <jhaoda@gmail.com>
- * @link https://github.com/jhaoda/SMSCenter
+ * @author  JhaoDa <jhaoda@gmail.com>
+ * @link    https://github.com/jhaoda/SMSCenter
  * @license http://www.apache.org/licenses/LICENSE-2.0
  *
  * Copyright 2013 JhaoDa
@@ -23,7 +23,8 @@
 
 namespace SMSCenter;
 
-class SMSCenter {
+class SMSCenter
+{
     const VERSION = '2.0.1';
 
     const MSG_SMS   = 0;
@@ -77,21 +78,18 @@ class SMSCenter {
         self::ZONE_2   => '~^\+?(44|359|30|45|86|53|371|373|48|886|358|420|82)~'
     ];
 
-    private static $curl = null;
+    private static $curl;
 
     /**
      * Инициализация.
      *
-     * @access public
-     *
-     * @param string $login    логин
-     * @param string $password пароль или MD5-хэш пароля
-     * @param bool   $useSSL   использовать HTTPS или нет
-     * @param array  $options  прочие параметры
-     *
-     * @return \SMSCenter\SMSCenter
+     * @param  string  $login     логин
+     * @param  string  $password  пароль
+     * @param  bool    $useSSL    использовать HTTPS или нет
+     * @param  array   $options   прочие параметры
      */
-    public function __construct($login, $password, $useSSL = false, array $options = []) {
+    public function __construct($login, $password, $useSSL = false, array $options = [])
+    {
         $this->login = $login;
         $this->password = $password;
         $this->useSSL = $useSSL;
@@ -107,31 +105,33 @@ class SMSCenter {
     /**
      * Отправка сообщения.
      *
-     * @access public
+     * @param  string|array  $phones   номера телефонов
+     * @param  string        $message  текст сообщения
+     * @param  string        $sender   имя отправителя
+     * @param  array         $options  дополнительные параметры
      *
-     * @param string|array $phones  номера телефонов
-     * @param string       $message текст сообщения
-     * @param string       $sender  имя отправителя
-     * @param array        $options дополнительные параметры
+     * @throws \InvalidArgumentException если список телефонов пуст или длина сообщения больше 1000 символов
      *
-     * @throws \InvalidArgumentException если список телефонов пуст или длина сообщения больше 800 символов
-     * @return bool|string|\stdClass результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
+     * @return bool|string|\stdClass  результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
      */
-    public function send($phones, $message, $sender = null, array $options = []) {
+    public function send($phones, $message, $sender = null, array $options = [])
+    {
         if (empty($phones)) {
             throw new \InvalidArgumentException("The 'phones' parameter is empty.");
+        }
+
+        if (is_array($phones)) {
+            $phones = array_map(__CLASS__.'::clearPhone', $phones);
+            $phones = implode(';', $phones);
         } else {
-            if (is_array($phones)) {
-                $phones = array_map(__CLASS__.'::clearPhone', $phones);
-                $phones = implode(';', $phones);
-            } else {
-                $phones = self::clearPhone($phones);
-            }
+            $phones = self::clearPhone($phones);
         }
 
         if ($message !== null && empty($message)) {
             throw new \InvalidArgumentException('The message is empty.');
-        } elseif (mb_strlen($message, 'UTF-8') > 800) {
+        }
+
+        if (mb_strlen($message, 'UTF-8') > 800) {
             throw new \InvalidArgumentException('The maximum length of a message is 800 symbols.');
         }
 
@@ -148,21 +148,20 @@ class SMSCenter {
     /**
      * Отправка разных сообщений на несколько номеров.
      *
-     * @access public
-     *
-     * @param array  $list    массив [номер => сообщение] или [номер, сообщение]
-     * @param string $sender  имя отправителя
-     * @param array  $options дополнительные параметры
+     * @param  array   $list     массив [номер => сообщение] или [номер, сообщение]
+     * @param  string  $sender   имя отправителя
+     * @param  array   $options  дополнительные параметры
      *
      * @return bool|string|\stdClass результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
      */
-    public function sendMulti(array $list, $sender = null, array $options = []) {
+    public function sendMulti(array $list, $sender = null, array $options = [])
+    {
         foreach ($list as $key => $value) {
             if (is_array($value)) {
                 list($key, $value) = $value;
             }
 
-            $options['list'][] = self::clearPhone($key) . ':' . str_replace("\n", '\n', $value);
+            $options['list'][] = self::clearPhone($key).':'.str_replace("\n", '\n', $value);
         }
 
         $options['list'] = implode("\n", $options['list']);
@@ -177,28 +176,26 @@ class SMSCenter {
     /**
      * Проверка номеров на доступность в реальном времени.
      *
-     * @access public
+     * @param  string|array  $phones  номера телефонов
      *
-     * @param string|array $phones номера телефонов
-     *
-     * @return bool|string|\stdClass результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
+     * @return bool|string|\stdClass  результат выполнения запроса в виде строки, объекта (FMT_JSON) или false в случае ошибки.
      */
-    public function pingPhone($phones) {
+    public function pingPhone($phones)
+    {
         return $this->send($phones, null, null, ['type' => self::MSG_PING]);
     }
 
     /**
      * Получение стоимости рассылки.
      *
-     * @access public
+     * @param  string|array  $phones   номера телефонов
+     * @param  string        $message  текст сообщения
+     * @param  array         $options  дополнительные опции
      *
-     * @param string|array $phones  номера телефонов
-     * @param string       $message текст сообщения
-     * @param array        $options дополнительные опции
-     *
-     * @return bool|string|\stdClass стоимость рассылки в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
+     * @return bool|string|\stdClass  стоимость рассылки в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
      */
-    public function getCost($phones, $message, array $options = []) {
+    public function getCost($phones, $message, array $options = [])
+    {
         $options['cost'] = self::COST_ONLY;
 
         return $this->send($phones, $message, null, $options);
@@ -207,14 +204,13 @@ class SMSCenter {
     /**
      * Получение стоимости рассылки разные сообщения на несколько номеров.
      *
-     * @access public
+     * @param  array  $list     массив [номер => сообщение] или [номер, сообщение]
+     * @param  array  $options  дополнительные опции
      *
-     * @param array $list    массив [номер => сообщение] или [номер, сообщение]
-     * @param array $options дополнительные опции
-     *
-     * @return bool|string|\stdClass стоимость рассылки в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
+     * @return bool|string|\stdClass  стоимость рассылки в виде строки, объекта (FMT_JSON) или FALSE в случае ошибки.
      */
-    public function getCostMulti(array $list, array $options = []) {
+    public function getCostMulti(array $list, array $options = [])
+    {
         $options['cost'] = self::COST_ONLY;
 
         return $this->sendMulti($list, null, $options);
@@ -223,70 +219,70 @@ class SMSCenter {
     /**
      * Получение статуса сообщения.
      *
-     * @access public
+     * @param  string      $phone  номер телефона
+     * @param  int|string  $id     идентификатор сообщения
+     * @param  int         $mode   вид ответа: обычный, полный, расширеный
      *
-     * @param string     $phone номер телефона
-     * @param int|string $id    идентификатор сообщения
-     * @param int        $mode  вид ответа: обычный, полный, расширеный
-     *
-     * @return bool|string|\stdClass статус сообщения в виде строки, объекта (FMT_JSON) или false в случае ошибки.
+     * @return bool|string|\stdClass  статус сообщения в виде строки, объекта (FMT_JSON) или false в случае ошибки.
      */
-    public function getStatus($phone, $id, $mode = self::STATUS_PLAIN) {
+    public function getStatus($phone, $id, $mode = self::STATUS_PLAIN)
+    {
         return $this->sendRequest('status', [
             'phone' => $phone,
-            'id'    => (int)$id,
-            'all'   => (int)$mode,
+            'id'    => (int) $id,
+            'all'   => (int) $mode,
         ]);
     }
 
     /**
      * Получение информации об операторе: название и регион регистрации номера абонента.
      *
-     * @access public
+     * @param  string  $phone  номер телефона
      *
-     * @param string $phone номер телефона
-     *
-     * @return bool|string|\stdClass информация об операторе в виде строки, объекта (FMT_JSON) или false в случае ошибки.
+     * @return bool|string|\stdClass  информация об операторе в виде строки, объекта (FMT_JSON) или false в случае ошибки.
      */
-    public function getOperatorInfo($phone) {
+    public function getOperatorInfo($phone)
+    {
         return $this->sendRequest('info', [
             'get_operator' => '1',
-            'phone'        => $phone
+            'phone'        => $phone,
         ]);
     }
 
     /**
      * Запрос баланса.
      *
-     * @access public
+     * @param  int  $format  формат ответа сервера (self::FMT_JSON)
      *
-     * @param int $format формат ответа сервера (self::FMT_JSON)
-     *
-     * @return string баланс в виде строки или false в случае ошибки.
+     * @return string  баланс в виде строки или false в случае ошибки.
      */
-    public function getBalance($format = self::FMT_JSON) {
+    public function getBalance($format = self::FMT_JSON)
+    {
         $response = $this->sendRequest('balance', ['fmt' => $format]);
 
-        if ($format == self::FMT_JSON) {
+        if ($format === self::FMT_JSON) {
             return json_decode($response)->balance;
-        } elseif ($format == self::FMT_XML) {
-            return preg_replace('~</*balance>~', '', $response);
-        } else {
-            return $response;
         }
+
+        if ($format === self::FMT_XML) {
+            return preg_replace('~</*balance>~', '', $response);
+        }
+
+        return $response;
     }
 
     /**
      * Определение тарифной зоны.
      *
-     * @param string $phone номер телефона
+     * @param  string  $phone  номер телефона
      *
-     * @return int номер тарифной зоны (константы self::ZONE_*)
+     * @return int  номер тарифной зоны (константы self::ZONE_*)
      */
-    public function getChargingZone($phone) {
-        $phone = $this->clearPhone($phone);
+    public function getChargingZone($phone)
+    {
+        $phone = self::clearPhone($phone);
 
-        foreach(self::$chargingZonePatterns as $key => $value) {
+        foreach (self::$chargingZonePatterns as $key => $value) {
             if (preg_match($value, $phone)) {
                 return $key;
             }
@@ -298,16 +294,15 @@ class SMSCenter {
     /**
      * Самая умная функция.
      *
-     * @access private
-     *
-     * @param string $resource
-     * @param array  $options
+     * @param  string  $resource
+     * @param  array   $options
      *
      * @throws \InvalidArgumentException
      *
      * @return bool|string|\stdClass
      */
-    private function sendRequest($resource, array $options) {
+    private function sendRequest($resource, array $options)
+    {
         $options = array_merge($this->options, $options);
 
         if (in_array($resource, ['status', 'info'])) {
@@ -320,7 +315,7 @@ class SMSCenter {
 
         $params = [
             'login='.urlencode($this->login),
-            'psw='.urlencode($this->password)
+            'psw='.urlencode($this->password),
         ];
 
         foreach ($options as $key => $value) {
@@ -332,21 +327,22 @@ class SMSCenter {
                     break;
                 default:
                     if (!empty($value)) {
-                        $params[] = $key . '=' . urlencode($value);
+                        $params[] = $key.'='.urlencode($value);
                     }
             }
         }
 
         $i = 0;
+
         do {
             (!$i) || sleep(2);
             $ret = $this->execRequest($resource, $params);
         } while ($ret == '' && ++$i < 3);
 
         if (($resource == 'info' || $resource == 'status') && $options['fmt'] == self::FMT_JSON) {
-            if ($options['charset'] == self::CHARSET_1251) {
+            if ($options['charset'] === self::CHARSET_1251) {
                 $ret = mb_convert_encoding($ret, 'UTF-8', 'WINDOWS-1251');
-            } elseif ($options['charset'] == self::CHARSET_KOI8) {
+            } elseif ($options['charset'] === self::CHARSET_KOI8) {
                 $ret = mb_convert_encoding($ret, 'UTF-8', 'KOI8-R');
             }
         }
@@ -357,17 +353,16 @@ class SMSCenter {
     /**
      * Непосредственно выполнение запроса.
      *
-     * @access private
+     * @param  string  $resource
+     * @param  array   $params
      *
-     * @param string $resource
-     * @param array  $params
-     *
-     * @return string ответ сервера
+     * @return string  ответ сервера
      */
-    private function execRequest($resource, array $params) {
-        $url = ($this->useSSL ? 'https' : 'http') . '://smsc.ru/sys/'.$resource.'.php';
+    private function execRequest($resource, array $params)
+    {
+        $url = ($this->useSSL ? 'https' : 'http').'://smsc.ru/sys/'.$resource.'.php';
         $query = implode('&', $params);
-        $isPOST = $resource === 'send' ? true : false;
+        $isPOST = $resource === 'send';
 
         if (function_exists('curl_init')) {
             if (!self::$curl) {
@@ -376,18 +371,18 @@ class SMSCenter {
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_CONNECTTIMEOUT => 5,
-                    CURLOPT_TIMEOUT => 10
+                    CURLOPT_TIMEOUT        => 10,
                 ]);
             }
 
             if ($isPOST) {
                 curl_setopt_array(self::$curl, [
-                    CURLOPT_URL => $url,
-                    CURLOPT_POST => true,
+                    CURLOPT_URL        => $url,
+                    CURLOPT_POST       => true,
                     CURLOPT_POSTFIELDS => $query,
                 ]);
             } else {
-                curl_setopt(self::$curl, CURLOPT_URL, $url . '?' . $query);
+                curl_setopt(self::$curl, CURLOPT_URL, $url.'?'.$query);
             }
 
             $response = curl_exec(self::$curl);
@@ -396,12 +391,12 @@ class SMSCenter {
 
             if ($isPOST) {
                 $options = array_merge($options, [
-                    'method' => 'POST',
-                    'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+                    'method'  => 'POST',
+                    'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
                     'content' => $query,
                 ]);
             } else {
-                $url .= '?' . $query;
+                $url .= '?'.$query;
             }
 
             $response = file_get_contents($url, false, stream_context_create(['http' => $options]));
@@ -413,14 +408,12 @@ class SMSCenter {
     /**
      * Удаляет из номера любые символы, кроме цифр.
      *
-     * @static
-     * @access public
+     * @param  string  $phone  номер телефона
      *
-     * @param string $phone номер телефона
-     *
-     * @return string «чистый» номер телефона
+     * @return string  «чистый» номер телефона
      */
-    public static function clearPhone($phone) {
+    public static function clearPhone($phone)
+    {
         return preg_replace('~[^\d+]~', '', $phone);
     }
 }
