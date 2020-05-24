@@ -1,123 +1,61 @@
-SMSCenter
-=========
+<h1 align="center">SDK для <a href="https://smsc.ru">SMS-Центр</a></h1>
 
-Класс для работы с сервисом smsc.ru (SMS-Центр)
+<p align="center">
+    <a href="https://packagist.org/packages/jhaoda/smscenter"><img src="https://img.shields.io/packagist/v/jhaoda/smscenter.svg?style=flat" alt="Latest Version on Packagist" /></a>
+    <a href="https://github.com/jhaoda/smscenter/actions?workflow=tests"><img src="https://github.com/jhaoda/smscenter/workflows/tests/badge.svg" alt="Testing" /></a>
+    <a href="https://scrutinizer-ci.com/g/jhaoda/smscenter"><img src="https://img.shields.io/scrutinizer/g/jhaoda/smscenter.svg?style=flat" alt="Quality Score" /></a>
+    <a href="https://scrutinizer-ci.com/g/jhaoda/smscenter/?branch=master"><img src="https://img.shields.io/scrutinizer/coverage/g/jhaoda/smscenter/master.svg?style=flat" alt="Code Coverage" /></a>
+    <a href="https://packagist.org/packages/jhaoda/smscenter"><img src="https://poser.pugx.org/jhaoda/smscenter/downloads?format=flat" alt="Total Downloads"></a>
+    <a href="https://raw.githubusercontent.com/jhaoda/smscenter/master/LICENSE.md"><img src="https://poser.pugx.org/jhaoda/smscenter/license?format=flat" alt="License MIT"></a>
+</p>
 
-Возможности:
-* отправка одного/нескольких сообщений одним запросом
-* все поддерживаемые типы сообщений: sms, mms, hlr, flash, wap, bin/hex, ping, call, email
-* отправка файлов в mms-, email- и call-сообщениях
-* получение стоимости рассылки
-* проверка статуса сообщений
-* проверка баланса
-* получение информации об операторе по номеру
+## Содержание
+- [Установка](#установка)
+- [Отправка сообщений](#отправка-сообщений)
 
-Минимальные требования — **PHP 5.4**+
+## Установка
 
-***
+> Минимальные требования — PHP 7.1+,  ext-json, ext-mbstring.
+
+Для установки используйте менеджер пакетов [Composer](https://getcomposer.org/):
+```bash
+composer require jhaoda/smscenter
+```
+
+## Логирование
+
+Для логирования запросов и ответов можно подключить любой логгер, реализующий стандарт [PSR-3](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-3-logger-interface.md), например, [Monolog](https://github.com/Seldaek/monolog):
+```php
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+
+$log = (new Logger('smsc.ru'))
+    ->pushHandler(new StreamHandler('path/to/your.log', Logger::INFO));
+
+$client->setLogger($log);
+```
+
+## Отправка сообщений
 
 #### Инициализация
 ```php
-$smsc = new \JhaoDa\SmsCenter\Api(
-    'ivan',
-    md5('ivanovich'),
-    $sender  = 'SuperIvan'
-    $secure  = false,
-    $timeout = 5
+use GuzzleHttp\Client as GuzzleClient;
+
+$smsc = new \JhaoDa\SmsCenter\Client(
+    'login', 'password', new GuzzleClient()
 );
 ```
 
-* `$sender`  — имя отправителя по умолчанию
-* `$secure`  — использовать https или нет
-* `$timeout` — таймаут на подключение к серверу и на выполнение запроса
+## Запуск тестов
 
-#### Отправка одного сообщения
-```php
-$ret = $sms->send(
-    new \JhaoDa\SmsCenter\Message\Sms(
-        '7991111111', 'Привет!'
-    )
-);
-
-// на несколько номеров
-$ret = $sms->send(
-    new \JhaoDa\SmsCenter\Message\Sms(
-        ['79991111111', '7(999) 222-22-22'], 'Привет!'
-    )
-);
+```
+$ vendor/bin/phpunit
 ```
 
-#### Отправка нескольких сообщений
-```php
-$ret = $sms->send(
-    new \JhaoDa\SmsCenter\Message\Sms(
-        ['7(999) 111-11-11', '89992222222'], 'Привет!'
-    ),
-    new \JhaoDa\SmsCenter\Message\Sms(
-        '79994444444', 'И тебе привет!'
-    ),
-    new \JhaoDa\SmsCenter\Message\Email(
-        'me@test.com', 'Текст письма', 'Me', 'Тема письма'
-    ),
-);
-```
+## Авторы
 
-#### Отправка сообщения с файлами
-```php
-$ret = $sms->send(
-    (new \JhaoDa\SmsCenter\Message\Mms(
-        '79994444444', 'И тебе привет!', 'Тема'
-    ))->attach(['C:\image1.png', 'C:\image2.jpg'])
-);
-```
+- [JhaoDa](https://github.com/jhaoda)
 
-#### Получение стоимости рассылки
-```php
-$ret = $smsc->getCost(
-    new \JhaoDa\SmsCenter\Message\Sms(
-        ['7991111111', '79992222222'], 'Начало около 251 млн лет, конец — 201 млн лет назад.'
-    )
-);
-```
+## Лиценция
 
-#### Получение баланса
-```php
-echo $smsc->getBalance(); // '72.2 RUR'
-echo $smsc->getBalance()->balance, ' руб.'; // '72.2 руб.'
-```
-
-#### Получение информации об абоненте
-```php
-$smsc->getPhoneInfo('7991111111');
-```
-
-#### Проверка доступности номера
-```php
-$smsc->ping('7991111111');
-```
-
-#### Получение информации об операторе
-```php
-$smsc->getOperatorInfo('7991111111');
-```
-
-#### Получения статуса сообщения
-```php
-echo $sms->getStatus('7991111111', 47379, \JhaoDa\SMSCenter\Api::STATUS_INFO_EXT)
-```
-
-#### Проверка тарифной зоны
-```php
-if ($sms->getChargingZone('79991111111') == \JhaoDa\SmsCenter\Api::ZONE_RU) {
-    // ...
-}
-```
-
-Вспомогательная функция для форматирования номера
-```php
-echo \JhaoDa\SMSCenter\Api::formatPhone('8991111111');  // +7991111111
-echo \JhaoDa\SMSCenter\Api::formatPhone('+8991111111'); // +7991111111
-```
-***
-
-Лицензия: Apache License, Version 2.0
+Данный SDK распространяется под лицензией [MIT](http://opensource.org/licenses/MIT).

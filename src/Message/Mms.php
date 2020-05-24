@@ -1,48 +1,70 @@
 <?php
 
+/**
+ * This file is part of SmsCenter SDK package.
+ *
+ * © JhaoDa (https://github.com/jhaoda)
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
 namespace JhaoDa\SmsCenter\Message;
 
-use JhaoDa\SMSCenter\Exception;
-use JhaoDa\SmsCenter\Transliterable;
-use JhaoDa\SmsCenter\Contract\Transliterable as TransliterableContract;
+use JhaoDa\SmsCenter\Enum\MessageType;
+use JhaoDa\SmsCenter\Message\Concerns\Transliterable;
+use JhaoDa\SmsCenter\Message\Concerns\WithAttachments;
+use JhaoDa\SmsCenter\Message\Exception\CouldNotCreateMessage;
 
-class Mms extends AbstractMessageWithAttachments implements TransliterableContract
+final class Mms extends AbstractMessage
 {
     use Transliterable;
+    use WithAttachments;
 
-    public $subject;
-
-    protected $maxFiles    = 3;
-    protected $maxFileSize = 524288; // 0.5Mb
-
-    public function __construct($phones, $message = null, $subject = null)
-    {
-        if (empty($message) && empty($subject)) {
-            throw new Exception('Необходимо заполнить "$message" или "$subject"');
-        }
-
-        $this->setPhones($phones);
-
-        $this->message = $message;
-        $this->subject = $subject;
-    }
+    private const MAX_NUMBER_OF_FILES = 20;
+    private const TOTAL_SIZE_OF_FILES = 314572800; // 300 Kb
 
     /**
-     * @inheritdoc
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  string|null               $subject
+     * @param  string|null               $id
      */
-    public function toArray()
+    public function __construct($to, ?string $content, ?string $subject, ?string $id = null)
     {
-        $params = parent::toArray();
-
-        if ($this->subject) {
-            $params['subj'] = $this->subject;
+        if (empty($content) && empty($subject)) {
+            throw CouldNotCreateMessage::invalidMmsArguments();
         }
 
-        return $params;
+        if (! empty($subject)) {
+            $this->params['subj'] = $subject;
+        }
+
+        $this->to($to);
+        $this->withId($id);
+
+        $this->content = $content;
     }
 
-    public function getType()
+    public function getType(): MessageType
     {
-        return self::TYPE_MMS;
+        return MessageType::MMS();
+    }
+
+    protected function getMaxFileSize(): ?int
+    {
+        return null;
+    }
+
+    protected function getMaxNumberOfFiles(): int
+    {
+        return self::MAX_NUMBER_OF_FILES;
+    }
+
+    protected function getMaxTotalSizeOfFiles(): ?int
+    {
+        return self::TOTAL_SIZE_OF_FILES;
     }
 }

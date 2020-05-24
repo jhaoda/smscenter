@@ -2,35 +2,27 @@
 
 namespace JhaoDa\SmsCenter\Response;
 
-use JhaoDa\SmsCenter\Exception;
-
 abstract class AbstractResponse
 {
-    private $response;
+    /** @var array */
+    protected $response;
 
     public function __construct($raw)
     {
-        $this->response = json_decode($raw, true);
+        $this->response = \json_decode($raw, true);
 
         if (isset($this->response['error'])) {
-            throw new Exception($this->response['error'], $this->response['error_code']);
+            throw new \RuntimeException($this->response['error'], $this->response['error_code']);
         }
     }
 
-    /**
-     * @return array
-     */
-    public function all()
+    public function all(): array
     {
         return $this->response;
     }
 
     public function __get($name)
     {
-        if (isset($this->response[$name])) {
-            return $this->response[$name];
-        }
-
-        return null;
+        return $this->response[$name] ?? null;
     }
 }

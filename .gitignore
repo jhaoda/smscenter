@@ -1,2 +1,4 @@
-.idea/
-vendor
+/.idea
+/build
+/vendor
+composer.lock

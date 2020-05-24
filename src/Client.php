@@ -1,90 +1,50 @@
 <?php
 
+/**
+ * This file is part of SmsCenter SDK package.
+ *
+ * © JhaoDa (https://github.com/jhaoda)
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
 namespace JhaoDa\SmsCenter;
 
-use GuzzleHttp\Client as GuzzleClient;
-use Psr\Http\Message\ResponseInterface;
+use Psr\Log\NullLogger;
+use Psr\Log\LoggerInterface;
+use Psr\Log\LoggerAwareInterface;
+use GuzzleHttp\ClientInterface;
+use JhaoDa\SmsCenter\Http\ApiClient;
+use JhaoDa\SmsCenter\Http\Authenticator;
+use JhaoDa\SmsCenter\Api\Messaging\Messaging;
 
-class Client
+final class Client implements LoggerAwareInterface
 {
-    private $baseUri = '://smsc.ru/sys/';
-    private $timeout = 5;
+    /** @var ApiClient */
+    private $client;
 
-    /**
-     * @type GuzzleClient
-     */
-    private $guzzle;
-
-    public function __construct($secure = false, $timeout = 5)
+    public function __construct(string $login, string $secret, ClientInterface $httpClient)
     {
-        $this->timeout = $timeout;
+        $this->client = new ApiClient(new Authenticator($login, $secret), $httpClient, new NullLogger());
+    }
 
-        $this->guzzle = new GuzzleClient([
-            'base_uri' => ($secure ? 'https' : 'http').$this->baseUri
-        ]);
+    public function messaging(): Messaging
+    {
+        return new Messaging($this->client);
     }
 
     /**
-     * Выполнение синхронного POST-запроса.
+     * Sets a logger instance on the object.
      *
-     * @param  string  $resource
-     * @param  array   $params
-     * @param  array   $files
-     * @param  bool    $async
+     * @param  LoggerInterface  $logger
      *
-     * @return ResponseInterface
+     * @return void
      */
-    public function request($resource, $params = [], $files = [], $async = false)
+    public function setLogger(LoggerInterface $logger): void
     {
-        $method = $async ? 'postAsync' : 'post';
-
-        list($key, $params) = $this->createPayload($params, $files);
-
-        $response = $this->guzzle->{$method}($resource.'.php', [
-            'connect_timeout' => $this->timeout,
-            'timeout'         => $this->timeout,
-            $key              => $params,
-        ]);
-
-        return $response;
-    }
-
-    /**
-     * Выполнение асинхронного POST-запроса.
-     *
-     * @param  string  $resource
-     * @param  array   $params
-     * @param  array   $files
-     *
-     * @return ResponseInterface
-     */
-    public function requestAsync($resource, $params = [], $files = [])
-    {
-        return $this->request($resource, $params, $files, true);
-    }
-
-    /**
-     * @param  array  $params
-     * @param  array  $files
-     *
-     * @return array
-     */
-    private function createPayload($params, $files = [])
-    {
-        if (empty($files)) {
-            return ['form_params', $params];
-        }
-
-        $items = [];
-
-        foreach ($params as $key => $value) {
-            $items[] = ['name' => $key, 'contents' => (string) $value];
-        }
-
-        foreach ($files as $key => $file) {
-            $items[] = ['name' => 'file'.$key, 'contents' => fopen($file, 'r')];
-        }
-
-        return ['multipart', $items];
+        $this->client->setLogger($logger);
     }
 }

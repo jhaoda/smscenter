@@ -1,123 +1,166 @@
 <?php
 
+/**
+ * This file is part of SmsCenter SDK package.
+ *
+ * © JhaoDa (https://github.com/jhaoda)
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
 namespace JhaoDa\SmsCenter\Message;
 
-use JhaoDa\SmsCenter\Api;
-use JhaoDa\SmsCenter\Exception;
+use Ramsey\Uuid\Uuid;
+use JhaoDa\SmsCenter\Core\Message as MessageContract;
+use JhaoDa\SmsCenter\Message\Concerns\WithAttachments;
+use JhaoDa\SmsCenter\Message\Exception\CouldNotCreateMessage;
 
-abstract class AbstractMessage
+abstract class AbstractMessage implements MessageContract
 {
-    const TYPE_SMS   = 0;
-    const TYPE_FLASH = 1;
-    const TYPE_WAP   = 2;
-    const TYPE_HLR   = 3;
-    const TYPE_BIN   = 4;
-    const TYPE_HEX   = 5;
-    const TYPE_PING  = 6;
-    const TYPE_MMS   = 7;
-    const TYPE_MAIL  = 8;
-    const TYPE_CALL  = 9;
+    /** @var string|null */
+    protected $id;
 
-    const CHARSET_UTF8 = 'utf-8';
-    const CHARSET_KOI8 = 'koi8-r';
-    const CHARSET_1251 = 'windows-1251';
+    /** @var string[] */
+    protected $to;
 
-    protected $phones;
-    protected $message;
+    /** @var string|null */
+    protected $content;
 
+    /** @var array */
     protected $params = [];
 
-    private $charsetsArray = [self::CHARSET_UTF8, self::CHARSET_KOI8, self::CHARSET_1251];
-    private $costsArray    = [Api::COST_ONLY, Api::COST_SEND, Api::COST_BALANCE];
-    private $typesArray    = [
-        null, 'flash=1', 'push=1', 'hlr=1', 'bin=1', 'bin=2', 'ping=1', 'mms=1', 'mail=1', 'call=1'
-    ];
-
-    /**
-     * @throws Exception
-     *
-     * @return int
-     */
-    public function getType()
+    public function from(string $name)
     {
-        throw new Exception('Необходимо указать тип сообщения.');
-    }
-
-    /**
-     * @param   string  $charset
-     *
-     * @return  $this
-     */
-    public function setCharset($charset)
-    {
-        if (in_array($charset, $this->charsetsArray)) {
-            $this->params['charset'] = $charset;
-        }
+        $this->params['sender'] = $name;
 
         return $this;
     }
 
     /**
-     * @param  string|array  $phones
-     *
-     * @throws Exception
+     * @param  iterable|string[]|string  $to
      *
      * @return $this
      */
-    public function setPhones($phones)
+    protected function to($to)
     {
-        if (empty($phones)) {
-            throw new Exception('Параметр "phones" является обязательным.');
+        if (\is_string($to)) {
+            $to = [$to];
         }
 
-        if (is_string($phones)) {
-            $phones = [$phones];
+        if ($to instanceof \Traversable) {
+            $to = \iterator_to_array($to);
         }
 
-        $this->phones = array_map(Api::class.'::formatPhone', $phones);
+        if (empty($to)) {
+            throw CouldNotCreateMessage::emptyRecipientList();
+        }
+
+        if (! $this instanceof Email) {
+            $to = \array_map([$this, 'formatPhone'], $to);
+        }
+
+        $this->to = $to;
 
         return $this;
     }
 
-    public function setSender($name)
+    public function getId(): string
     {
-        if (!empty($name)) {
-            $this->params['sender'] = $name;
-        }
-
-        return $this;
-    }
-
-    public function setCostMode($mode)
-    {
-        if (in_array($mode, $this->costsArray)) {
-            $this->params['cost'] = $mode;
-        }
-
-        return $this;
+        return $this->id;
     }
 
     /**
-     * @return array
+     * @param  string|int  $id
+     *
+     * @return $this
      */
-    public function toArray()
+    protected function withId($id)
     {
-        $default = [
-            'phones'  => join(';', $this->phones),
-            'charset' => self::CHARSET_UTF8
-        ];
-
-        $params = array_merge($default, $this->params);
-
-        if ($this->message) {
-            $params['mes'] = $this->message;
+        if ($id) {
+            $this->id = (string) $id;
+        } else {
+            $this->id = Uuid::uuid4()->toString();
         }
 
-        if (($pair = $this->typesArray[$this->getType()]) !== null) {
-            list($key, $value) = explode('=', $pair);
-            $params[$key] = $value;
+        return $this;
+    }
+
+    public function useUrlShortener(bool $value)
+    {
+        $this->params['tinyurl'] = (int) $value;
+
+        return $this;
+    }
+
+//    public function sendAt(\DateTimeInterface $sendAt = null)
+//    {
+//        if ($sendAt) {
+//            $msk = \DateTime::createFromFormat(\DATE_ATOM, $sendAt->format(\DATE_ATOM))->setTimezone(new \DateTimeZone('Europe/Moscow'));
+//
+//            \dd($sendAt, $msk);
+////            $mskTimezone = new \DateTimeZone('Europe/Moscow');
+////            \dd($mskTimezone, $sendAt, $mskTimezone->getOffset($sendAt) / 3600, (new \DateTimeZone('UTC'))->getOffset($sendAt) / 3600);
+//
+//            //$this->params['tz'] = $sendAt->getTimezone()->getOffset($mskSendAt);
+//            //$this->params['time'] = '0'.$sendAt->getTimestamp();
+//        } else {
+//            unset($this->params['tz'], $this->params['time']);
+//        }
+//
+//        return $this;
+//    }
+//
+//    private $availableParams = [
+//        'period', 'freq', 'pp', 'op', 'maxsms'
+//    ];
+//
+//    /**
+//     * Установка дополнительных параметров.
+//     *
+//     * @param  string $name
+//     * @param  mixed  $value
+//     *
+//     * @return $this
+//     */
+//    public function setParameter($name, $value)
+//    {
+//        if (\in_array($name, $this->availableParams, true)) {
+//            $this->params[$name] = $value;
+//        }
+//
+//        return $this;
+//    }
+//
+    public function toArray(): array
+    {
+        $params = \array_merge($this->params, [
+            'id'      => $this->getId(),
+            'phones'  => \implode(';', $this->to),
+        ]);
+
+        if ($this->content) {
+            $params['mes'] = $this->content;
+        }
+
+        if (\in_array(WithAttachments::class, \class_uses(static::class))) {
+            /** @var WithAttachments $this */
+            $params = \array_merge($params, $this->files);
         }
 
         return $params;
+    }
+
+    private function formatPhone(string $phone): string
+    {
+        // + — отключает автоисправление номера
+        // G — префикс для группы номеров (https://smsc.ru/api/http/send/group/)
+        if (\strpos($phone, '+') === 0 || \strpos($phone, 'G') === 0) {
+            return $phone;
+        }
+
+        return \preg_replace('~^[7|8]~', '7', \preg_replace('~[^\d+]~', '', $phone));
     }
 }

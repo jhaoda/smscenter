@@ -1,32 +1,129 @@
 <?php
 
+/**
+ * This file is part of SmsCenter SDK package.
+ *
+ * © JhaoDa (https://github.com/jhaoda)
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
 namespace JhaoDa\SmsCenter\Message;
 
-use JhaoDa\SmsCenter\Transliterable;
-use JhaoDa\SmsCenter\Contract\Transliterable as TransliterableContract;
+use JhaoDa\SmsCenter\Enum\SmsType;
+use JhaoDa\SmsCenter\Enum\MessageType;
+use JhaoDa\SmsCenter\Message\Concerns\Transliterable;
+use JhaoDa\SmsCenter\Message\Exception\CouldNotCreateMessage;
 
-class Sms extends AbstractMessage implements TransliterableContract
+final class Sms extends AbstractMessage
 {
     use Transliterable;
 
-    /**
-     * @type string комментарий в sms-сообщении
-     */
+    private const MAX_CONTENT_LENGTH = 1000;
+
+    /** @var SmsType|null */
+    private $mode;
+
+    /** @var string|null */
     private $comment;
 
     /**
-     * Тип сообщения: sms, mms, ping и т.д.
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  string|null               $id
      *
-     * @type int
+     * @return Sms
      */
-    private $type;
-
-    public function __construct($phones, $message = null, $type = self::TYPE_SMS)
+    public static function plain($to, string $content, ?string $id = null): self
     {
-        $this->setPhones($phones);
+        return new self($to, $content, null, $id);
+    }
 
-        $this->message = $message;
-        $this->type    = $type;
+    /**
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  string|null               $id
+     *
+     * @return Sms
+     */
+    public static function ping($to, ?string $content = null, ?string $id = null): self
+    {
+        return new self($to, $content, SmsType::PING(), $id);
+    }
+
+    /**
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  string|null               $id
+     *
+     * @return Sms
+     */
+    public static function hlr($to, ?string $content = null, ?string $id = null): self
+    {
+        return new self($to, $content, SmsType::HLR(), $id);
+    }
+
+    /**
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  string|null               $id
+     *
+     * @return Sms
+     */
+    public static function push($to, string $content, ?string $id = null): self
+    {
+        return new self($to, $content, SmsType::PUSH(), $id);
+    }
+
+    /**
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  string|null               $id
+     *
+     * @return Sms
+     */
+    public static function flash($to, string $content, ?string $id = null): self
+    {
+        return new self($to, $content, SmsType::FLASH(), $id);
+    }
+
+    /**
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  string|null               $id
+     *
+     * @return Sms
+     */
+    public static function social($to, string $content, ?string $id = null): self
+    {
+        return new self($to, $content, SmsType::SOCIAL(), $id);
+    }
+
+    /**
+     * @param  iterable|string[]|string  $to
+     * @param  string|null               $content
+     * @param  SmsType                   $mode
+     * @param  string|null               $id
+     */
+    public function __construct($to, ?string $content = null, ?SmsType $mode = null, ?string $id = null)
+    {
+        // пустыми могут быть только сообщения типа ping и hlr
+        if (empty($content) && !\in_array($this->getType(), [SmsType::HLR(), SmsType::PING()], true)) {
+            throw CouldNotCreateMessage::messageCanNotBeEmpty();
+        }
+
+        if (\mb_strlen($content) > self::MAX_CONTENT_LENGTH) {
+            throw CouldNotCreateMessage::messageLengthLimitExceeded(self::MAX_CONTENT_LENGTH);
+        }
+
+        $this->to($to);
+        $this->withId($id);
+
+        $this->mode = $mode;
+        $this->content = $content;
     }
 
     /**
@@ -36,9 +133,9 @@ class Sms extends AbstractMessage implements TransliterableContract
      *
      * @return $this
      */
-    public function setComment($comment)
+    public function comment(string $comment)
     {
-        if ($this->type == AbstractMessage::TYPE_SMS) {
+        if ($this->mode === null) {
             $this->comment = $comment;
         }
 
@@ -46,21 +143,36 @@ class Sms extends AbstractMessage implements TransliterableContract
     }
 
     /**
-     * @inheritdoc
+     * Время «жизни» sms-сообщения.
+     *
+     * @param  int  $ttl  от 1 до 24 часов
+     *
+     * @return $this
      */
-    public function toArray()
+    public function withTtl(int $ttl)
+    {
+        $this->params['valid'] = $ttl;
+
+        return $this;
+    }
+
+    public function toArray(): array
     {
         $params = parent::toArray();
 
-        if ($this->type == AbstractMessage::TYPE_SMS && $this->comment) {
-            $params['mes'] .= "\n~~~\n".$this->comment;
+        if ($this->mode) {
+            $this->params[$this->mode->getValue()] = 1;
+        }
+
+        if ($this->mode === null && !empty($this->comment)) {
+            $params['mes'] .= "\n~~~\n{$this->comment}";
         }
 
         return $params;
     }
 
-    public function getType()
+    public function getType(): MessageType
     {
-        return $this->type;
+        return MessageType::SMS();
     }
 }

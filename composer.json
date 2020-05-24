@@ -1,27 +1,45 @@
 {
     "name": "jhaoda/smscenter",
-    "type": "library",
-    "description": "Класс для работы с API сервиса СМС-Центр (smsc.ru)",
+    "description": "СМС-Центр (smsc.ru) SDK",
     "keywords": ["sms", "smscentre", "smscenter", "smsc.ru", "api"],
     "homepage": "https://github.com/jhaoda/smscenter",
-    "license": "Apache-2.0",
+    "type": "library",
+    "license": "MIT",
     "authors": [
         {
             "name": "JhaoDa",
             "email": "jhaoda@gmail.com"
         }
     ],
-    "support": {
-        "source": "https://github.com/jhaoda/smscenter",
-        "issues": "https://github.com/jhaoda/smscenter/issues"
-    },
     "require": {
-        "php": ">=5.4.0",
-        "guzzlehttp/guzzle": "~6"
+        "php": ">=7.1",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ramsey/uuid": "~3.0",
+        "guzzlehttp/guzzle": "~6.0",
+    },
+    "require-dev": {
+        "monolog/monolog": "^1.25|^2.0",
+        "nikic/php-parser": "^4.4",
+        "phpunit/phpunit": "~7.5"
     },
     "autoload": {
         "psr-4": {
             "JhaoDa\\SmsCenter\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "JhaoDa\\SmsCenter\\Tests\\": "tests"
+        }
+    },
+    "suggest": {
+        "monolog/monolog": "Для логирования и отладки"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
     }
 }

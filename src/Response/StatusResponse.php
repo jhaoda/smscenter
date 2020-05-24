@@ -36,7 +36,7 @@ class StatusResponse extends AbstractResponse
     public function __toString()
     {
         if ($this->phone) {
-            return $this->phone.': '.($this->status_name ? $this->status_name : $this->status);
+            return $this->phone.': '.($this->status_name ?: $this->status);
         }
 
         return (string) $this->status;

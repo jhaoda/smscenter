@@ -15,6 +15,6 @@ class BalanceResponse extends AbstractResponse
 {
     public function __toString()
     {
-        return $this->balance.' '.$this->currency;
+        return "{$this->balance} {$this->currency}";
     }
 }
