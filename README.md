@@ -4,9 +4,9 @@
     <a href="https://packagist.org/packages/jhaoda/smscenter"><img src="https://img.shields.io/packagist/v/jhaoda/smscenter.svg?style=flat" alt="Latest Version on Packagist" /></a>
     <a href="https://github.com/jhaoda/smscenter/actions?workflow=tests"><img src="https://github.com/jhaoda/smscenter/workflows/tests/badge.svg" alt="Testing" /></a>
     <a href="https://scrutinizer-ci.com/g/jhaoda/smscenter"><img src="https://img.shields.io/scrutinizer/g/jhaoda/smscenter.svg?style=flat" alt="Quality Score" /></a>
-    <a href="https://scrutinizer-ci.com/g/jhaoda/smscenter/?branch=develop"><img src="https://img.shields.io/scrutinizer/coverage/g/jhaoda/smscenter/master.svg?style=flat" alt="Code Coverage" /></a>
+    <a href="https://scrutinizer-ci.com/g/jhaoda/smscenter/?branch=develop"><img src="https://img.shields.io/scrutinizer/coverage/g/jhaoda/smscenter/develop.svg?style=flat" alt="Code Coverage" /></a>
     <a href="https://packagist.org/packages/jhaoda/smscenter"><img src="https://poser.pugx.org/jhaoda/smscenter/downloads?format=flat" alt="Total Downloads"></a>
-    <a href="https://raw.githubusercontent.com/jhaoda/smscenter/develop/LICENSE.md"><img src="https://poser.pugx.org/jhaoda/smscenter/license?format=flat" alt="License MIT"></a>
+    <a href="https://raw.githubusercontent.com/jhaoda/smscenter/develop/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-428F7E?format=flat" alt="License MIT"></a>
 </p>
 
 ## Содержание
